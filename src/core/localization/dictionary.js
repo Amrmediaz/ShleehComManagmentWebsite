@@ -131,8 +131,8 @@ export const dictionary = {
         click_upload: "Click to upload cover image",
         location: "Location",
         financials: "Financials",
-        min_rent: "Min rent (OMR/yr)",
-        max_rent: "Max rent (OMR/yr)",
+        min_rent: "Min rent (OMR/Month)",
+        max_rent: "Max rent (OMR/Month)",
         services: "Services & utilities",
         sec_24: "Security 24/7",
         wifi: "Free Wi-Fi",
@@ -287,15 +287,55 @@ export const dictionary = {
         "beds" : "Beds",
         "bath" : "Bath",
         "up_to": "Up to To",
-        "building_added_sucess" : "Building Added Sucess",
+        "building_added_sucess" : "Building Added Sucessfully",
         "no_flats": "No Added flats",
         "flat_added_sucess" : "Flat Added Sucess",
+        "building_add_failed" : "Building Added Failed",
+      "feature_is_under_developing":  "This feature is Under Developing and it will available Soon",
+        "service_sec_24" : "Service Security 24/7",
+        'error_name_ar_required': 'Building Name (Arabic) is required',
+        'error_name_en_required': 'Building Name (English) is required',
+        'error_year_invalid': 'Invalid year (must be between 1900 and current year)',
+        'error_floors_required': 'Number of floors is required (must be greater than 0)',
+        'error_flats_required': 'Number of flats is required (must be greater than 0)',
 
+        // Unit Types
+        'error_unit_type_required': 'At least one unit type must be selected',
+
+        // Location
+        'error_governorate_required': 'Governorate is required',
+        'error_wilayat_required': 'Wilayat is required',
+        'error_location_required': 'Detailed address is required',
+
+        // Financials
+        'error_min_rent_required': 'Minimum rent is required (must be ≥ 0)',
+        'error_max_rent_required': 'Maximum rent is required (must be ≥ 0)',
+        'error_rent_range_invalid': 'Maximum rent must be greater than or equal to minimum rent',
+
+        // Media
+        'error_cover_required': 'Cover image is required',
+        'error_images_required': 'At least one image must be uploaded to gallery',
+        'error_services_required': 'At least one service must be selected',
+
+        // General
+        'error_validation_failed': 'Data validation failed',
+        'error_please_check_fields': 'Please check all required fields',
+        error_name_worker_phone_required: "Worker phone number is required.",
+        error_name_managment_phone_required: "Management phone number is required.",
+        error_managment_phone_same_workeker_phone: "Management phone cannot be the same as the worker phone."
+    
     },
     ar: {
+        error_name_worker_phone_required: "رقم هاتف العامل مطلوب.",
+        error_name_managment_phone_required: "رقم هاتف الإدارة مطلوب.",
+        error_managment_phone_same_workeker_phone: "لا يمكن أن يكون رقم هاتف الإدارة هو نفس رقم هاتف العامل.",
+    
+        "feature_is_under_developing" : "الخاصية تحت التطوير وسوف تكون متاحة قريبا",
+        "building_add_failed" : "فشل في إضافة البناية",
         "building_added_sucess" : "تم إضافة البناية بنجاح",
         "flat_added_sucess" : "تم إضافة الشقة بنجاح",
         "flats" : "الشقق ",
+        "no_flats" : "لا توجد شقق مضافة",
         "flat_type_name_ar": "وصف مخنصر للشقة (عربي)",
         "flat_type_name_en": "وصف مخنصر للشقة (إنجليزي)",
         "service_security 24/7": "خدمة أمن 24/7",
@@ -441,8 +481,8 @@ export const dictionary = {
         click_upload: "انقر لتحميل صورة الغلاف",
         location: "الموقع",
         financials: "البيانات المالية",
-        min_rent: "أدنى إيجار (ر.ع/سنة)",
-        max_rent: "أقصى إيجار (ر.ع/سنة)",
+        min_rent: "أدنى إيجار (ر.ع/شهريا)",
+        max_rent: "أقصى إيجار (ر.ع/شهريا)",
         services: "الخدمات والمرافق",
         sec_24: "أمن 24/7",
         wifi: "واي فاي مجاني",
@@ -455,7 +495,7 @@ export const dictionary = {
         cctv: "كاميرات مراقبة",
         additional_details: "تفاصيل إضافية",
         description_placeholder: "صف العقار باختصار، الميزات الفريدة، المعالم القريبة...",
-        save: "حفظ المجمع العقاري",
+        save: "حفظ البناية",
         login_title: "أهلاً بعودتك",
         username_or_email: "اسم المستخدم أو البريد الإلكتروني",
         login_button: "تسجيل الدخول",
@@ -587,6 +627,35 @@ export const dictionary = {
         "contact": "التواصل",
         "exclusive": "حصري",
         "view_on_map": "تصفح في الخريطة",
-        "no_room_types": "لا توجد نماذج شقق مضافة"
+        "no_room_types": "لا توجد نماذج شقق مضافة" ,
+        "service_sec_24" : "أمن 24/7",
+        'error_name_ar_required': 'اسم المبنى (عربي) مطلوب',
+        'error_name_en_required': 'اسم المبنى (إنجليزي) مطلوب',
+        'error_year_invalid': 'السنة غير صحيحة (يجب أن تكون بين 1900 والسنة الحالية)',
+        'error_floors_required': 'عدد الطوابق مطلوب (يجب أن يكون أكبر من 0)',
+        'error_flats_required': 'عدد الشقق مطلوب (يجب أن يكون أكبر من 0)',
+
+        // Unit Types
+        'error_unit_type_required': 'يجب تحديد نوع وحدة واحد على الأقل',
+
+        // Location
+        'error_governorate_required': 'المحافظة مطلوبة',
+        'error_wilayat_required': 'الولاية مطلوبة',
+        'error_location_required': 'العنوان التفصيلي مطلوب',
+
+        // Financials
+        'error_min_rent_required': 'الحد الأدنى للإيجار مطلوب (يجب أن يكون ≥ 0)',
+        'error_max_rent_required': 'الحد الأقصى للإيجار مطلوب (يجب أن يكون ≥ 0)',
+        'error_rent_range_invalid': 'الحد الأقصى للإيجار يجب أن يكون أكبر من أو يساوي الحد الأدنى',
+
+        // Media
+        'error_cover_required': 'صورة الغلاف مطلوبة',
+        'error_images_required': 'يجب تحميل صورة واحدة على الأقل في المعرض',
+        'error_services_required': 'يجب تحديد خدمة واحدة على الأقل',
+
+        // General
+        'error_validation_failed': 'فشل التحقق من البيانات',
+        'error_please_check_fields': 'يرجى التحقق من جميع الحقول المطلوبة',
+
     }
 };

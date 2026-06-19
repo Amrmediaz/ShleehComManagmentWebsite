@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from '../context/LanguageContext.jsx';
 import { RegisterUserUseCase } from '../../core/useCases/RegisterUserUseCase.js';
 import { validateRegisterFields } from '../../core/utils/validators.js';
-import logoImage from '/src/assets/logo.webp';
-import PasswordRules from '../components/PasswordRules';
+import logoImage from '/src/assets/logo.jpg';
+import PasswordRules from '../components/Profile/PasswordRules';
 
 export default function RegisterPage() {
     const { t, lang, toggleLanguage } = useTranslation();

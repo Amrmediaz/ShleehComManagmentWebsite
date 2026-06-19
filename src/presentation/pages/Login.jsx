@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../context/LanguageContext.jsx';
 import { LoginUserUseCase } from '../../core/useCases/LoginUserUseCase.js';
 import { validateLoginFields } from '../../core/utils/validators.js';
-import logoImage from '/src/assets/logo.webp';
+import logoImage from '/src/assets/logo.jpg';
 
 export default function LoginPage() {
     const { t, lang, toggleLanguage } = useTranslation();

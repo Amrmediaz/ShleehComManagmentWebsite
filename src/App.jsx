@@ -1,13 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-import Sidebar from './presentation/components/Sidebar';
-import Header from './presentation/components/Header';
-import Dashboard from './presentation/pages/Dashboard';
+import Sidebar from './presentation/components/Main/Sidebar';
+import Header from './presentation/components/Main/Header';
 import BuildingDetail from './presentation/pages/BuildingDetail';
-import CalendarView from './presentation/pages/CalendarView';
-import BookingForm from './presentation/pages/BookingForm';
-import BookingList from './presentation/pages/BookingList';
 import LoginPage from './presentation/pages/Login.jsx';
 import RegisterPage from './presentation/pages/Register.jsx';
 import ResetPassword from './presentation/pages/ResetPassword.jsx';
@@ -23,7 +19,7 @@ const ProtectedRoute = ({ children }) => {
 // 🔓 Public Route — redirects logged-in users away from login/register
 const PublicRoute = ({ children }) => {
     const token = localStorage.getItem('token');
-    if (token) return <Navigate to="/management/" replace />;
+    if (token) return <Navigate to="management/" replace />;
     return children;
 };
 

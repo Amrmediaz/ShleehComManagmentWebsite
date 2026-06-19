@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from '../context/LanguageContext';
+import { useTranslation } from '../../context/LanguageContext.jsx';
 
 export default function LogoutModal({ isOpen, onClose, onConfirm }) {
     const { t } = useTranslation();

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from '../context/LanguageContext.jsx';
-import { GetProfileUseCase } from '../../core/usecases/GetProfileUseCase';
-import { UpdateProfileUseCase } from '../../core/usecases/UpdateProfileUseCase';
-import { ChangePasswordUseCase } from '../../core/usecases/ChangePasswordUseCase';
-import PasswordRules from '../components/PasswordRules';
-import { validatePassword } from '../../core/utils/validators.js';
+import { useTranslation } from '../../context/LanguageContext.jsx';
+import { GetProfileUseCase } from '../../../core/usecases/GetProfileUseCase';
+import { UpdateProfileUseCase } from '../../../core/usecases/UpdateProfileUseCase';
+import { ChangePasswordUseCase } from '../../../core/usecases/ChangePasswordUseCase';
+import PasswordRules from '../../components/Profile/PasswordRules';
+import { validatePassword } from '../../../core/utils/validators.js';
 export default function ProfileModal({ isOpen, onClose }) {
     const { t ,lang} = useTranslation();
 

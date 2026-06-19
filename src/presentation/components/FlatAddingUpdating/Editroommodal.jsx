@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useTranslation } from '../context/LanguageContext.jsx';
+import { useTranslation } from '../../context/LanguageContext.jsx';
 import { fileUploadApiClient } from '/src/data/FileUploadClient.js';
-import { BuildingRepository } from '../../data/repositories/BuildingRepository.js'; // Update path as needed
+import { BuildingRepository } from '../../../data/repositories/BuildingRepository.js'; // Update path as needed
 import { IconX, IconPlus, IconTrash, IconDeviceFloppy } from '@tabler/icons-react';
 
 export default function EditRoomModal({ isOpen, onClose, flat, onUpdate }) {

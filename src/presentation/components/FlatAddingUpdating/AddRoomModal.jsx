@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useTranslation } from '../context/LanguageContext.jsx';
-import { AddFlatUseCase } from '../../core/useCases/AddFlatUseCase';
+import { useTranslation } from '../../context/LanguageContext.jsx';
+import { AddFlatUseCase } from '../../../core/useCases/AddFlatUseCase';
 import { fileUploadApiClient } from '/src/data/FileUploadClient.js';
 import { IconX, IconPlus, IconTrash, IconDeviceFloppy } from '@tabler/icons-react';
 

@@ -1,16 +1,16 @@
 import React from 'react';
-import { useTranslation } from '../context/LanguageContext';
+import { useTranslation } from '../../context/LanguageContext';
 
 // 🟢 Added 'mobileOpen' and 'closeSidebar' as props
 export default function Sidebar({ currentScreen, setScreen, mobileOpen, closeSidebar }) {
     const { t } = useTranslation();
 
     const menuItems = [
-        // { id: 'dashboard', label: t('nav_dash'), icon: 'fa-chart-pie' },
+        { id: 'dashboard', label: t('nav_dash'), icon: 'fa-chart-pie' },
         { id: 'buildings', label: t('nav_buildings'), icon: 'fa-city' },
-        // { id: 'calendar', label: t('nav_calendar'), icon: 'fa-calendar-days' },
-        // { id: 'new-booking', label: t('nav_new_booking'), icon: 'fa-calendar-plus' },
-        // { id: 'bookings-list', label: t('nav_booking_list'), icon: 'fa-list-check' },
+        { id: 'calendar', label: t('nav_calendar'), icon: 'fa-calendar-days' },
+        { id: 'new-booking', label: t('nav_new_booking'), icon: 'fa-calendar-plus' },
+        { id: 'bookings-list', label: t('nav_booking_list'), icon: 'fa-list-check' },
     ];
 
     return (
@@ -26,7 +26,9 @@ export default function Sidebar({ currentScreen, setScreen, mobileOpen, closeSid
                         key={item.id}
                         className={`nav-item ${currentScreen === item.id ? 'active' : ''}`}
                         onClick={() => {
-                            setScreen(item.id);
+                            if(item.id === "buildings"){
+                            setScreen(item.id);} else {
+                                alert(t('feature_is_under_developing'));}
                             if (closeSidebar) closeSidebar(); // 🟢 Auto-hide sidebar after clicking a menu item on mobile
                         }}
                     >

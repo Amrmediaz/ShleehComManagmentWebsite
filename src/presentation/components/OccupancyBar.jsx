@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from '../context/LanguageContext'; // Ensure this path is correct relative to your folder structure
+import { useTranslation } from '../context/LanguageContext.jsx'; // Ensure this path is correct relative to your folder structure
 
 export default function OccupancyBar({ label, value }) {
     const color = value >= 80 ? 'var(--success)' : value >= 50 ? 'var(--primary)' : 'var(--warning)';

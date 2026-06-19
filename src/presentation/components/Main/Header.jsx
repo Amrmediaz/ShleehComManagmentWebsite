@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from '../context/LanguageContext';
-import AddPropertyModal from '../components/AddBuildingModal.jsx';
-import LogoutModal from '../components/LogoutModal.jsx';
-import ProfileModal from '../components/ProfileModal.jsx';
-import { GetOwnerBuildingsUseCase } from '../../core/useCases/GetOwnerBuildingsUseCase.js';
+import { useTranslation } from '../../context/LanguageContext';
+import AddPropertyModal from '../../pages/AddBuildingModal.jsx';
+import LogoutModal from '../../components/Profile/LogoutModal.jsx';
+import ProfileModal from '../../components/Profile/ProfileModal.jsx';
+import { GetOwnerBuildingsUseCase } from '../../../core/useCases/GetOwnerBuildingsUseCase.js';
 
 export default function Header({ selectedBuilding, onBuildingChange }) {
     const { lang, toggleLanguage, t } = useTranslation();

@@ -12,9 +12,9 @@ export const EditBuildingUseCase = {
      * @param {object} formData - raw values from the presentation layer
      * @returns {{ validationError: string|null, result: object|null }}
      */
-    execute: async (formData) => {
+    execute: async (formData,t) => {
         // 1. Validate before touching the network
-        const validationError = validateBuildingFields(formData);
+        const validationError = validateBuildingFields(formData,t);
         if (validationError) {
             return { validationError, result: null };
         }
