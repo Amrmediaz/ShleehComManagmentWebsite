@@ -29,7 +29,7 @@ export default function ContactSection({
                 </div>
                 <div>
                     <label className="modal-label">{isRTL ? 'هاتف العمال' : 'Worker Phone'}
-                        <span style={{ color: '#ef4444' }}>*</span>
+                        {/*<span style={{ color: '#ef4444' }}>*</span>*/}
                     </label>
                     <input
                         className="modal-input"

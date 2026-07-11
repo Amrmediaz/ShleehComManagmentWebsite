@@ -12,9 +12,9 @@ export const AddFlatUseCase = {
      * @param {object} formData - raw values from the presentation layer
      * @returns {{ validationError: string|null, result: object|null }}
      */
-    execute: async (formData) => {
+    execute: async (formData,t) => {
         // 1. Validate before touching the network
-        const validationError = validateFlatFields(formData);
+        const validationError = validateFlatFields(formData,t);
         if (validationError) {
             return { validationError, result: null };
         }

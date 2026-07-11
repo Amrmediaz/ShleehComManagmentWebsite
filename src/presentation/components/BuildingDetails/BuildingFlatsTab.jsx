@@ -4,19 +4,18 @@ import '../../styles/Buildingdetails.css';
 
 /**
  * BuildingFlatsTab Component
- * Displays a list of flats with ability to add and edit
- *
- * @component
- * @param {Object} props
- * @param {Array} props.flats - Array of flat objects
- * @param {boolean} props.loading - Loading state
- * @param {Function} props.t - Translation function
- * @param {Function} props.onAddFlat - Callback to add new flat
- * @param {Function} props.onEditFlat - Callback to edit flat
- * @param {Function} props.onDeleteFlat - Callback to delete flat (optional)
- * @returns {React.ReactElement}
+ * Displays a list of flats with ability to add, edit, set prices, and view bookings
  */
-const BuildingFlatsTab = ({ flats, loading, t, onAddFlat, onEditFlat, onDeleteFlat }) => {
+const BuildingFlatsTab = ({
+                              flats,
+                              loading,
+                              t,
+                              onAddFlat,
+                              onEditFlat,
+                              onSetPrices,
+                              onViewBookings,
+                              onDeleteFlat
+                          }) => {
     return (
         <div>
             {/* Header with count and add button */}
@@ -58,6 +57,8 @@ const BuildingFlatsTab = ({ flats, loading, t, onAddFlat, onEditFlat, onDeleteFl
                             t={t}
                             onEdit={onEditFlat}
                             onDelete={onDeleteFlat}
+                            onSetPrices={onSetPrices}
+                            onViewBookings={onViewBookings}
                         />
                     ))}
                 </div>

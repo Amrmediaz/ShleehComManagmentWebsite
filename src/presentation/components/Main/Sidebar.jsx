@@ -26,9 +26,15 @@ export default function Sidebar({ currentScreen, setScreen, mobileOpen, closeSid
                         key={item.id}
                         className={`nav-item ${currentScreen === item.id ? 'active' : ''}`}
                         onClick={() => {
-                            if(item.id === "buildings"){
-                            setScreen(item.id);} else {
-                                alert(t('feature_is_under_developing'));}
+                            if (item.id === "new-booking" || item.id === "dashboard") {
+                                alert(t('feature_is_under_developing'))
+                                return;
+                            }
+                            // if(item.id === "buildings"){
+                            setScreen(item.id);
+                        // } 
+                            // else {
+                            //     alert(t('feature_is_under_developing'));}
                             if (closeSidebar) closeSidebar(); // 🟢 Auto-hide sidebar after clicking a menu item on mobile
                         }}
                     >

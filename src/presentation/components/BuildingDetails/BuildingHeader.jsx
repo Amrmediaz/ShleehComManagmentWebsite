@@ -34,8 +34,10 @@ const BuildingHeader = ({ building, lang, t, onEditClick, onImageError }) => {
             {coverImg && !imageLoadError ? (
                 <div className="building-header__background">
                     <img
-                        src={imageSrc}
+                        key={coverImg}
+                        src={coverImg}
                         alt="building-cover"
+                        loading="eager" // Use eager instead of lazy for hero images
                         style={{
                             position: 'absolute',
                             inset: 0,
@@ -93,7 +95,7 @@ const BuildingHeader = ({ building, lang, t, onEditClick, onImageError }) => {
                     {raw.minimumRent && (
                         <span className="meta-stat-item">
                             <i className="fa-solid fa-money-bill" style={{ marginInlineEnd: '6px' }} />
-                            OMR {raw.minimumRent} – {raw.maxRent}
+                           {t('OMR')}{raw.minimumRent} – {raw.maxRent}
                         </span>
                     )}
 

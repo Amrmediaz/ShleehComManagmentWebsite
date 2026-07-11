@@ -1,5 +1,6 @@
 import React from 'react';
 import {IconCreditCard, IconStar, IconCheck, IconPigMoney, IconCash} from '@tabler/icons-react';
+import RialSymbol from '../OmaniRial.jsx';
 import '../../styles/AddBuildingModal.css';
 
 /**
@@ -45,31 +46,61 @@ export default function FinancialsSection({
                         <label className="modal-label">{t('min_rent')}
                             <span style={{ color: '#ef4444' }}>*</span>
                         </label>
-                        <input
-                            className="modal-input"
-                            type="number"
-                            placeholder="150"
-                            min="0"
-                            value={minimumRent}
-                            onChange={e => setMinimumRent(e.target.value)}
-                        />
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                className="modal-input"
+                                type="number"
+                                placeholder="150"
+                                min="0"
+                                value={minimumRent}
+                                onChange={e => setMinimumRent(e.target.value)}
+                                style={{ paddingInlineEnd: '32px' }}
+                            />
+                            <RialSymbol
+                                style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    insetInlineEnd: '10px',
+                                    transform: 'translateY(-50%)',
+                                    width: '16px',
+                                    height: '16px',
+                                    color: '#9ca3af',
+                                    pointerEvents: 'none',
+                                }}
+                            />
+                        </div>
                     </div>
                     <div>
                         <label className="modal-label">{t('max_rent')}
                             <span style={{ color: '#ef4444' }}>*</span>
                         </label>
-                        <input
-                            className="modal-input"
-                            type="number"
-                            placeholder="800"
-                            min="0"
-                            value={maxRent}
-                            onChange={e => setMaxRent(e.target.value)}
-                        />
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                className="modal-input"
+                                type="number"
+                                placeholder="800"
+                                min="0"
+                                value={maxRent}
+                                onChange={e => setMaxRent(e.target.value)}
+                                style={{ paddingInlineEnd: '32px' }}
+                            />
+                            <RialSymbol
+                                style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    insetInlineEnd: '10px',
+                                    transform: 'translateY(-50%)',
+                                    width: '16px',
+                                    height: '16px',
+                                    color: '#9ca3af',
+                                    pointerEvents: 'none',
+                                }}
+                            />
+                        </div>
                     </div>
                     <div>
                         <label className="modal-label">{isRTL ? 'الأيام الأدنى' : 'Min Days'}
-                            <span style={{ color: '#ef4444' }}>*</span>
+                            {/*<span style={{ color: '#ef4444' }}>*</span>*/}
                         </label>
                         <input
                             className="modal-input"

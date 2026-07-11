@@ -1,86 +1,319 @@
-import React, { useState } from 'react';
-import { useTranslation } from '../context/LanguageContext'; // Ensure this is imported
-import { FilterBookingsUseCase } from '../../core/useCases/FilterBookingsUseCase';
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../context/LanguageContext';
+import { GetOwnerBuildingsFlatUseCase } from '../../core/useCases/GetBuildingsFlatUseCase.js';
+import { GetBookingDetailsUseCase } from '../../core/useCases/GetBookingDetailsUseCase.js';
+import BookingList from '../components/BookingList.jsx';
+import '../styles/Buildingdetails.css'; // ✅ CORRECT - Separate CSS file
 
-const filterUseCase = new FilterBookingsUseCase();
+/**
+ * BookingListPage
+ *
+ * Clean Architecture Implementation:
+ * ├─ Component (BookingListPage.jsx) - UI & State
+ * ├─ UseCase (GetOwnerBuildingsFlatUseCase) - Business logic
+ * ├─ UseCase (GetBookingDetailsUseCase) - Business logic
+ * ├─ Repository (GetBookingDetailsRepository) - Data handling
+ * ├─ API (buildingApiClient) - HTTP requests
+ * └─ Entity (BookingDetailsEntity) - Data model
+ *
+ * Features:
+ * - Building info display
+ * - Flat selector with UseCase
+ * - Booking list integration
+ * - Booking details modal
+ * - Full error handling
+ * - Bilingual support (EN/AR)
+ * - RTL layout
+ */
+export default function BookingListPage({ building }) {
+    const { t, lang } = useTranslation();
+    const isRTL = lang === 'ar';
 
-export default function BookingList({ bookings = [], building }) {
-    // 🟢 Initialize the translation hook
-    const { t } = useTranslation();
+    // ──── STATE ────
+    const [flats, setFlats] = useState([]);
+    const [selectedFlatId, setSelectedFlatId] = useState(null);
+    const [selectedFlatName, setSelectedFlatName] = useState('');
+    const [loadingFlats, setLoadingFlats] = useState(true);
+    const [error, setError] = useState(null);
 
-    const [searchName, setSearchName] = useState('');
-    const [status, setStatus] = useState('ALL');
-    const [roomTypeId, setRoomTypeId] = useState('ALL');
+    // ──── MODAL STATE ────
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [bookingDetails, setBookingDetails] = useState(null);
+    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [detailsError, setDetailsError] = useState(null);
 
-    const safeBookings = Array.isArray(bookings) ? bookings : [];
-    const filteredBookings = filterUseCase.execute(safeBookings, { searchName, roomTypeId, status });
+    // ──── LOAD FLATS (UseCase) ────
+    useEffect(() => {
+        console.log('='.repeat(60));
+        console.log('[BookingListPage] Loading flats for building:', building);
 
-    const roomTypes = building?.roomTypes || [];
+        if (!building?.id && !building?.raw?.id) {
+            console.log('[BookingListPage] ⚠️ No building ID');
+            setLoadingFlats(false);
+            return;
+        }
+
+        const loadFlats = async () => {
+            setLoadingFlats(true);
+            setError(null);
+
+            try {
+                const buildingId = building?.id || building?.raw?.id;
+                console.log('[BookingListPage] 🔄 Executing GetOwnerBuildingsFlatUseCase');
+
+                // ✅ Using UseCase (not direct API call)
+                const result = await GetOwnerBuildingsFlatUseCase.execute(buildingId);
+                const flatsData = Array.isArray(result) ? result : [];
+
+                console.log('[BookingListPage] ✅ Loaded', flatsData.length, 'flats');
+                setFlats(flatsData);
+                setSelectedFlatId(null);
+                setSelectedFlatName('');
+                setError(null);
+
+            } catch (err) {
+                console.error('[BookingListPage] ❌ Error loading flats:', err);
+                setError(err.message || 'Failed to load flats');
+                setFlats([]);
+            } finally {
+                setLoadingFlats(false);
+                console.log('='.repeat(60));
+            }
+        };
+
+        loadFlats();
+    }, [building?.id, building?.raw?.id]);
+
+    // ──── FETCH BOOKING DETAILS (UseCase) ────
+    const handleViewBookingDetails = async (bookingId) => {
+        console.log('[BookingListPage] Opening modal for booking:', bookingId);
+        setIsModalOpen(true);
+        setLoadingDetails(true);
+        setDetailsError(null);
+        setBookingDetails(null);
+
+        try {
+            console.log('[BookingListPage] 🔄 Executing GetBookingDetailsUseCase');
+
+            // ✅ Using UseCase (not direct API call)
+            const details = await GetBookingDetailsUseCase.execute(bookingId);
+
+            console.log('[BookingListPage] ✅ Got booking details:', details);
+            setBookingDetails(details);
+
+        } catch (err) {
+            console.error('[BookingListPage] ❌ Error fetching details:', err);
+            setDetailsError(err.message || 'An error occurred while fetching booking details');
+        } finally {
+            setLoadingDetails(false);
+        }
+    };
+
+    // ──── RENDER ────
+    if (!building) {
+        return (
+            <div className="booking-list-page">
+                <div className="booking-list-page__header">
+                    <h1 className="booking-list-page__title">📋 {t('booking_list')}</h1>
+                    <p className="booking-list-page__subtitle">{t('view_all_bookings')}</p>
+                </div>
+                <div className="booking-list-page__empty-state">
+                    <div className="booking-list-page__empty-icon">🏢</div>
+                    <p>{t('select_building')}</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div>
-            <div className="filter-bar" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                <input
-                    type="text"
-                    placeholder={t('search_guest_name')}
-                    value={searchName}
-                    onChange={(e) => setSearchName(e.target.value)}
-                />
+        <div className={`booking-list-page ${isRTL ? 'booking-list-page--rtl' : ''}`}>
 
-                <select value={roomTypeId} onChange={(e) => setRoomTypeId(e.target.value)}>
-                    <option value="ALL">{t('all_room_types')}</option>
-                    {roomTypes.map(r => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                </select>
-
-                <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                    <option value="ALL">{t('all_status')}</option>
-                    <option value="Active">{t('status_active')}</option>
-                    <option value="Upcoming">{t('status_upcoming')}</option>
-                </select>
+            {/* ──── HEADER ──── */}
+            <div className="booking-list-page__header">
+                <h1 className="booking-list-page__title">📋 {t('booking_list')}</h1>
+                <p className="booking-list-page__subtitle">{t('view_all_bookings')}</p>
             </div>
 
-            <div className="card-panel" style={{ padding: 0, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                    <tr>
-                        <th>{t('guest_name')}</th>
-                        <th>{t('check_in')}</th>
-                        <th>{t('check_out')}</th>
-                        <th>{t('total_paid')}</th>
-                        <th>{t('status')}</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {filteredBookings.length === 0 ? (
-                        <tr>
-                            <td colSpan="5" style={{ textAlign: 'center', padding: '24px' }}>
-                                {t('no_matches_found')}
-                            </td>
-                        </tr>
+            {/* ──── BUILDING INFO ──── */}
+            <div className="booking-list-page__building-info">
+                🏢 {building?.nameEn || building?.nameAr || building?.name || 'Building'}
+            </div>
+
+            {/* ──── ERROR ──── */}
+            {error && (
+                <div className="booking-list-page__error">
+                    ❌ {error}
+                </div>
+            )}
+
+            {/* ──── LOADING ──── */}
+            {loadingFlats && (
+                <div className="booking-list-page__loading">
+                    <div className="booking-list-page__spinner"></div>
+                    <p>{t('loading')}</p>
+                </div>
+            )}
+
+            {/* ──── CONTENT ──── */}
+            {!loadingFlats && (
+                <>
+                    {flats.length > 0 ? (
+                        <>
+                            {/* Selector */}
+                            <div className="booking-list-page__selector">
+                                <label className="booking-list-page__selector-label">
+                                    {t('select_flat')}:
+                                </label>
+                                <select
+                                    value={selectedFlatId || ''}
+                                    onChange={(e) => {
+                                        const flatId = e.target.value ? Number(e.target.value) : null;
+                                        const flat = flatId ? flats.find(f => f.id === flatId) : null;
+                                        setSelectedFlatId(flatId);
+                                        setSelectedFlatName(flat?.nameEn || flat?.nameAr || '');
+                                    }}
+                                    className="booking-list-page__select"
+                                >
+                                    <option value="">{t('choose_flat')}</option>
+                                    {flats.map(flat => (
+                                        <option key={flat.id} value={flat.id}>
+                                            {flat.nameEn || flat.nameAr}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Booking List */}
+                            {selectedFlatId ? (
+                                <BookingList
+                                    flatId={selectedFlatId}
+                                    flatName={selectedFlatName}
+                                    autoLoad={true}
+                                    onViewBooking={handleViewBookingDetails}
+                                />
+                            ) : (
+                                <div className="booking-list-page__empty-state">
+                                    <div className="booking-list-page__empty-icon">👆</div>
+                                    <p>{t('select_flat_to_view_bookings')}</p>
+                                </div>
+                            )}
+                        </>
                     ) : (
-                        filteredBookings.map(bk => (
-                            <tr key={bk.id}>
-                                <td>
-                                    <strong>{bk.guestName}</strong><br/>
-                                    <small style={{ color: 'var(--text-muted)' }}>{bk.phone}</small>
-                                </td>
-                                <td>{bk.checkIn}</td>
-                                <td>{bk.checkOut}</td>
-                                <td><strong style={{ color: 'var(--primary)' }}>OMR {bk.totalPaid}</strong></td>
-                                <td>
-                                        <span className={`badge ${bk.status === 'Active' ? 'badge-success' : 'badge-warning'}`}>
-                                            {/* 🟢 Safely translate status dynamically */}
-                                            {t(`status_${bk.status.toLowerCase()}`)}
-                                        </span>
-                                </td>
-                            </tr>
-                        ))
+                        <div className="booking-list-page__empty-state">
+                            <div className="booking-list-page__empty-icon">🏠</div>
+                            <p>{t('no_flats')}</p>
+                        </div>
                     )}
-                    </tbody>
-                </table>
-            </div>
+                </>
+            )}
+
+            {/* ──── DETAILS MODAL ──── */}
+            {isModalOpen && (
+                <div className="booking-list-page__modal-overlay" onClick={() => setIsModalOpen(false)}>
+                    <div className="booking-list-page__modal" onClick={(e) => e.stopPropagation()}>
+
+                        {/* Modal Header */}
+                        <div className="booking-list-page__modal-header">
+                            <h3 className="booking-list-page__modal-title">
+                                {t('booking_details')}
+                            </h3>
+                            <button
+                                className="booking-list-page__modal-close"
+                                onClick={() => setIsModalOpen(false)}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="booking-list-page__modal-body">
+                            {loadingDetails && (
+                                <div className="booking-list-page__loading">
+                                    <div className="booking-list-page__spinner"></div>
+                                    <p>{t('loading_details')}</p>
+                                </div>
+                            )}
+
+                            {detailsError && (
+                                <div className="booking-list-page__error">❌ {detailsError}</div>
+                            )}
+
+                            {bookingDetails && (
+                                <div className="booking-list-page__details">
+                                    <div className="booking-list-page__detail-row">
+                                        <span className="booking-list-page__detail-label">{t('booking_id')}:</span>
+                                        <span className="booking-list-page__detail-value">#{bookingDetails.id}</span>
+                                    </div>
+
+                                    <div className="booking-list-page__detail-row">
+                                        <span className="booking-list-page__detail-label">{t('customer_name')}:</span>
+                                        <span className="booking-list-page__detail-value">{bookingDetails.name}</span>
+                                    </div>
+
+                                    <div className="booking-list-page__detail-row">
+                                        <span className="booking-list-page__detail-label">{t('phone')}:</span>
+                                        <span className="booking-list-page__detail-value">{bookingDetails.phone}</span>
+                                    </div>
+
+                                    <div className="booking-list-page__detail-row">
+                                        <span className="booking-list-page__detail-label">{t('cost')}:</span>
+                                        <span className="booking-list-page__detail-value">
+                                            {bookingDetails.cost} {t('OMR')}
+                                        </span>
+                                    </div>
+
+                                    <div className="booking-list-page__detail-row">
+                                        <span className="booking-list-page__detail-label">{t('days_count')}:</span>
+                                        <span className="booking-list-page__detail-value">{bookingDetails.daysCount}</span>
+                                    </div>
+
+                                    <div className="booking-list-page__detail-row">
+                                        <span className="booking-list-page__detail-label">{t('insurance')}:</span>
+                                        <span className="booking-list-page__detail-value">
+                                            {bookingDetails.insurance} {t('OMR')}
+                                        </span>
+                                    </div>
+
+                                    <div className="booking-list-page__detail-row">
+                                        <span className="booking-list-page__detail-label">{t('paid_amount')}:</span>
+                                        <span className="booking-list-page__detail-value">{bookingDetails.paidAmount}</span>
+                                    </div>
+
+                                    <div className="booking-list-page__detail-row">
+                                        <span className="booking-list-page__detail-label">{t('total_cost')}:</span>
+                                        <span className="booking-list-page__detail-value">
+                                            {bookingDetails.getTotalCost()} {t('OMR')}
+                                        </span>
+                                    </div>
+
+                                    <div className="booking-list-page__detail-row">
+                                        <span className="booking-list-page__detail-label">{t('payment_percentage')}:</span>
+                                        <span className="booking-list-page__detail-value">
+                                            {bookingDetails.getPaymentPercentage()}%
+                                        </span>
+                                    </div>
+
+                                    {/* Booked Days */}
+                                    {bookingDetails.bookedDays && bookingDetails.bookedDays.length > 0 && (
+                                        <div className="booking-list-page__booked-days">
+                                            <h4 className="booking-list-page__booked-days-title">
+                                                📅 {t('booked_days')}:
+                                            </h4>
+                                            <div className="booking-list-page__booked-days-list">
+                                                {bookingDetails.bookedDays.map((bDay, idx) => (
+                                                    <span key={idx} className="booking-list-page__day-badge">
+                                                        {bDay.day} {bDay.isFullDay ? `(${t('full_day')})` : ''}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

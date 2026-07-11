@@ -360,11 +360,11 @@ export default function AddPropertyModal({ isOpen, onClose }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                                 <div>
-                                    <label style={lbl}>{t('min_rent')} <span style={{ color: '#9ca3af', fontWeight: 400 }}>({isRTL ? 'ر.ع/سنوياً' : 'OMR/yr'})</span></label>
+                                    <label style={lbl}>{t('min_rent')} <span style={{ color: '#9ca3af', fontWeight: 400 }}>({isRTL ? 'ر.ع/شهريا' : '{t('OMR')}/yr'})</span></label>
                                     <input style={inp} type="number" placeholder="150" />
                                 </div>
                                 <div>
-                                    <label style={lbl}>{t('max_rent')} <span style={{ color: '#9ca3af', fontWeight: 400 }}>({isRTL ? 'ر.ع/سنوياً' : 'OMR/yr'})</span></label>
+                                    <label style={lbl}>{t('max_rent')} <span style={{ color: '#9ca3af', fontWeight: 400 }}>({isRTL ? 'ر.ع/شهريا' : '{t('OMR')}/yr'})</span></label>
                                     <input style={inp} type="number" placeholder="800" />
                                 </div>
                                 <div>

@@ -4,7 +4,11 @@ import { dictionary } from '/src/core/localization/dictionary.js';
 const LanguageContext = createContext();
 
 export function LanguageProvider({ children }) {
-    const [lang, setLang] = useState('en');
+    // ✅ Initialize language from localStorage, default to 'en'
+    const [lang, setLang] = useState(() => {
+        const savedLang = localStorage.getItem('selectedLanguage');
+        return savedLang || 'en';
+    });
 
     useEffect(() => {
         // Target documentElement (the <html> tag) for global RTL support
@@ -12,6 +16,9 @@ export function LanguageProvider({ children }) {
 
         root.setAttribute('lang', lang);
         root.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+
+        // ✅ Save language to localStorage whenever it changes
+        localStorage.setItem('selectedLanguage', lang);
     }, [lang]);
 
     const toggleLanguage = () => setLang(prev => prev === 'en' ? 'ar' : 'en');

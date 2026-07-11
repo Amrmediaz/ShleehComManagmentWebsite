@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../context/LanguageContext';
 import EditBuildingModal from './EditBuildingModal.jsx';
 import EditRoomModal from '../components/FlatAddingUpdating/EditRoomModal.jsx';
-import AddRoomModal from '../components//FlatAddingUpdating/AddRoomModal.jsx';
+import AddRoomModal from '../components/FlatAddingUpdating/AddRoomModal.jsx';
+import SpecialPricesModal from '../components/FlatAddingUpdating/SpecialPricesModal.jsx';
+import BookingsCalendarModal from '../components/FlatAddingUpdating/BookingsCalendarModal.jsx';
 import { GetOwnerBuildingsFlatUseCase } from '../../core/useCases/GetBuildingsFlatUseCase.js';
 import { GetOwnerFlatUseCase } from '../../core/useCases/GetFlatByIdUseCase.js';
 
@@ -29,13 +31,6 @@ import '../styles/Buildingdetails.css';
 /**
  * BuildingDetail Component
  * Main component that displays comprehensive building information
- * Includes header, tabs for details/flats/images, and modal management
- *
- * @component
- * @param {Object} props
- * @param {Object} props.building - Building data from parent
- * @param {Function} props.onUpdateBuilding - Callback when building is updated
- * @returns {React.ReactElement}
  */
 export default function BuildingDetail({ building, onUpdateBuilding }) {
     const { t, lang } = useTranslation();
@@ -51,10 +46,15 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editLoadingFlat, setEditLoadingFlat] = useState(false);
 
+    // Special Prices Modal State
+    const [isSetPricesModalOpen, setIsSetPricesModalOpen] = useState(false);
+    const [selectedFlatForPrices, setSelectedFlatForPrices] = useState(null);
+
+    // Bookings Modal State
+    const [isBookingsModalOpen, setIsBookingsModalOpen] = useState(false);
+    const [selectedFlatForBookings, setSelectedFlatForBookings] = useState(null);
+
     // ===== EFFECTS =====
-    /**
-     * Update local building when props change
-     */
     useEffect(() => {
         if (building) {
             const enrichedBuilding = {
@@ -63,14 +63,10 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
                 coverImg: getCoverImage(building),
                 images: getBuildingImages(building),
             };
-
             setLocalBuilding(enrichedBuilding);
         }
     }, [building, building?.id, building?.coverImg, building?.raw?.coverimg]);
 
-    /**
-     * Fetch flats when building ID changes
-     */
     useEffect(() => {
         const buildingId = getBuildingId(localBuilding);
         if (buildingId) {
@@ -79,9 +75,6 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
     }, [localBuilding?.id, localBuilding?.raw?.id]);
 
     // ===== HANDLERS =====
-    /**
-     * Fetch flats for the building
-     */
     const fetchFlats = async () => {
         const buildingId = getBuildingId(localBuilding);
         if (!buildingId) return;
@@ -92,15 +85,13 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
             const flatsData = Array.isArray(result) ? result : [];
             setFlats(flatsData);
         } catch (error) {
+            console.error('[BuildingDetail] Error fetching flats:', error);
             setFlats([]);
         } finally {
             setLoadingFlats(false);
         }
     };
 
-    /**
-     * Handle edit building button click
-     */
     const handleEditBuilding = () => {
         const validation = validateBuilding(localBuilding);
         if (!validation.isValid) {
@@ -110,9 +101,6 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
         setIsEditOpen(true);
     };
 
-    /**
-     * Handle building update from modal
-     */
     const handleUpdate = (updatedRaw) => {
         const updated = mergeUpdatedBuilding(localBuilding, updatedRaw);
         setLocalBuilding(updated);
@@ -120,50 +108,112 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
         setIsEditOpen(false);
     };
 
-    /**
-     * Handle edit flat click
-     */
     const handleEditFlat = async (flat) => {
-        setEditLoadingFlat(true);
-        try {
-            const freshFlatData = await GetOwnerFlatUseCase.execute(flat.id);
+        console.log('[BuildingDetail] Edit flat clicked:', flat);
 
-            if (Array.isArray(freshFlatData) && freshFlatData.length > 0) {
-                setEditingFlat(freshFlatData[0]);
-                setIsEditModalOpen(true);
-            } else if (freshFlatData && typeof freshFlatData === 'object' && !Array.isArray(freshFlatData)) {
-                setEditingFlat(freshFlatData);
+        if (!flat?.id) {
+            alert('Error: Flat ID is missing');
+            return;
+        }
+
+        setEditLoadingFlat(true);
+
+        try {
+            console.log('[BuildingDetail] Fetching flat data for ID:', flat.id);
+            const freshFlatData = await GetOwnerFlatUseCase.execute(flat.id);
+            console.log('[BuildingDetail] Fresh flat data received:', freshFlatData);
+
+            let flatToEdit = null;
+
+            if (!freshFlatData) {
+                console.error('[BuildingDetail] No data returned from API');
+                alert('Error: No flat data returned');
+                return;
+            }
+
+            if (Array.isArray(freshFlatData)) {
+                if (freshFlatData.length > 0) {
+                    flatToEdit = freshFlatData[0];
+                } else {
+                    console.error('[BuildingDetail] Empty array returned');
+                    alert('Error: Flat data is empty');
+                    return;
+                }
+            }
+            else if (typeof freshFlatData === 'object') {
+                flatToEdit = freshFlatData;
+            }
+            else {
+                console.warn('[BuildingDetail] Unexpected response format, using original flat');
+                flatToEdit = flat;
+            }
+
+            if (flatToEdit && flatToEdit.id) {
+                console.log('[BuildingDetail] Setting editing flat:', flatToEdit);
+                setEditingFlat(flatToEdit);
                 setIsEditModalOpen(true);
             } else {
-                alert('Failed to load flat data. Please try again.');
+                console.error('[BuildingDetail] Flat object invalid or missing ID');
+                alert('Error: Invalid flat data');
             }
+
         } catch (error) {
+            console.error('[BuildingDetail] Error loading flat:', error);
             alert(`Error loading flat: ${error.message}`);
         } finally {
             setEditLoadingFlat(false);
         }
     };
 
-    /**
-     * Handle delete flat (placeholder for future implementation)
-     */
+    const handleSetPrices = (flat) => {
+        console.log('[BuildingDetail] Set prices clicked for flat:', flat);
+
+        if (!flat?.id) {
+            alert('Error: Flat ID is missing');
+            return;
+        }
+
+        setSelectedFlatForPrices(flat);
+        setIsSetPricesModalOpen(true);
+    };
+
+    const handleClosePricesModal = () => {
+        console.log('[BuildingDetail] Closing set prices modal');
+        setIsSetPricesModalOpen(false);
+        setSelectedFlatForPrices(null);
+    };
+
+    // ===== NEW: Bookings Handlers =====
+    const handleViewBookings = (flat) => {
+        console.log('[BuildingDetail] View bookings clicked for flat:', flat);
+
+        if (!flat?.id) {
+            alert('Error: Flat ID is missing');
+            return;
+        }
+
+        setSelectedFlatForBookings(flat);
+        setIsBookingsModalOpen(true);
+    };
+
+    const handleCloseBookingsModal = () => {
+        console.log('[BuildingDetail] Closing bookings modal');
+        setIsBookingsModalOpen(false);
+        setSelectedFlatForBookings(null);
+    };
+
     const handleDeleteFlat = (flatId) => {
         if (confirm('Are you sure you want to delete this flat?')) {
             // TODO: Implement delete API call
         }
     };
 
-    /**
-     * Handle add flat button click
-     */
     const handleAddFlat = () => {
         setIsModalOpen(true);
     };
 
-    /**
-     * Handle flat update from modal
-     */
     const handleFlatUpdate = () => {
+        console.log('[BuildingDetail] Flat updated, closing modal and refreshing list');
         setIsEditModalOpen(false);
         setEditingFlat(null);
         fetchFlats();
@@ -211,6 +261,8 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
                     onAddFlat={handleAddFlat}
                     onEditFlat={handleEditFlat}
                     onDeleteFlat={handleDeleteFlat}
+                    onSetPrices={handleSetPrices}
+                    onViewBookings={handleViewBookings}
                 />
             )}
 
@@ -237,17 +289,39 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
                 />
             )}
 
-            {isEditModalOpen && editingFlat && (
+            {/* Edit Flat Modal */}
+            {isEditModalOpen && editingFlat ? (
                 <EditRoomModal
                     isOpen={isEditModalOpen}
                     onClose={() => {
+                        console.log('[BuildingDetail] Closing edit modal');
                         setIsEditModalOpen(false);
                         setEditingFlat(null);
                     }}
                     flat={editingFlat}
                     onUpdate={handleFlatUpdate}
                 />
-            )}
+            ) : null}
+
+            {/* Special Prices Modal */}
+            {isSetPricesModalOpen && selectedFlatForPrices ? (
+                <SpecialPricesModal
+                    isOpen={isSetPricesModalOpen}
+                    onClose={handleClosePricesModal}
+                    flatId={selectedFlatForPrices.id}
+                    flatName={selectedFlatForPrices.nameEn || selectedFlatForPrices.nameAr}
+                />
+            ) : null}
+
+            {/* Bookings Calendar Modal */}
+            {isBookingsModalOpen && selectedFlatForBookings ? (
+                <BookingsCalendarModal
+                    isOpen={isBookingsModalOpen}
+                    onClose={handleCloseBookingsModal}
+                    flatId={selectedFlatForBookings.id}
+                    flatName={selectedFlatForBookings.nameEn || selectedFlatForBookings.nameAr}
+                />
+            ) : null}
 
             {/* Loading Overlay */}
             <LoadingOverlay isVisible={editLoadingFlat} message={t('loading') || 'Loading flat details...'} />

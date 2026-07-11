@@ -12,7 +12,52 @@ import '../../styles/AddBuildingModal.css';
  * - Address details
  * - Interactive map with marker
  * - Get current location (geolocation) as floating icon on map
+ * - Switchable map layers: street / satellite / hybrid / terrain
  */
+
+// ── Map layer definitions ──
+// street:    standard OpenStreetMap tiles (original behavior)
+// satellite: Esri World Imagery (pure aerial photography, no labels)
+// hybrid:    Esri World Imagery + a labels/boundaries overlay on top
+// terrain:   OpenTopoMap (elevation/contour style)
+const MAP_LAYERS = {
+    street: {
+        labelAr: 'خريطة',
+        labelEn: 'Street',
+        icon: '🗺️',
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+    },
+    satellite: {
+        labelAr: 'قمر صناعي',
+        labelEn: 'Satellite',
+        icon: '🛰️',
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics',
+        maxZoom: 19,
+    },
+    hybrid: {
+        labelAr: 'مختلط',
+        labelEn: 'Hybrid',
+        icon: '🌍',
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attribution: 'Tiles © Esri',
+        maxZoom: 19,
+        // Overlay adds place names/roads/boundaries on top of the imagery.
+        overlayUrl:
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    },
+    terrain: {
+        labelAr: 'تضاريس',
+        labelEn: 'Terrain',
+        icon: '⛰️',
+        url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        attribution: 'Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap',
+        maxZoom: 17,
+    },
+};
+
 export default function LocationSection({
                                             gouvernate,
                                             setGovernorate,
@@ -34,9 +79,46 @@ export default function LocationSection({
     const mapContainer = useRef(null);
     const mapInstance = useRef(null);
     const markerRef = useRef(null);
+    const baseLayerRef = useRef(null);
+    const overlayLayerRef = useRef(null);
     const [showMap, setShowMap] = useState(false);
     const [mapError, setMapError] = useState('');
     const [geoLoading, setGeoLoading] = useState(false);
+    const [mapLayerType, setMapLayerType] = useState('street');
+
+    /**
+     * Swap the active base layer (and overlay, for hybrid) on the map.
+     * Safe to call any time the map instance already exists.
+     */
+    const applyMapLayer = (type) => {
+        if (!mapInstance.current) return;
+        const config = MAP_LAYERS[type] || MAP_LAYERS.street;
+
+        if (baseLayerRef.current) {
+            mapInstance.current.removeLayer(baseLayerRef.current);
+            baseLayerRef.current = null;
+        }
+        if (overlayLayerRef.current) {
+            mapInstance.current.removeLayer(overlayLayerRef.current);
+            overlayLayerRef.current = null;
+        }
+
+        baseLayerRef.current = L.tileLayer(config.url, {
+            attribution: config.attribution,
+            maxZoom: config.maxZoom,
+        }).addTo(mapInstance.current);
+
+        if (config.overlayUrl) {
+            overlayLayerRef.current = L.tileLayer(config.overlayUrl, {
+                maxZoom: config.maxZoom,
+            }).addTo(mapInstance.current);
+        }
+    };
+
+    const handleLayerChange = (type) => {
+        setMapLayerType(type);
+        applyMapLayer(type);
+    };
 
     // Initialize map only when showMap is true
     useEffect(() => {
@@ -51,12 +133,8 @@ export default function LocationSection({
                     10
                 );
 
-                // Add OpenStreetMap tiles
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution:
-                        '© OpenStreetMap contributors',
-                    maxZoom: 19,
-                }).addTo(mapInstance.current);
+                // Add the currently-selected base layer (defaults to street).
+                applyMapLayer(mapLayerType);
 
                 // Add marker if coordinates exist
                 if (lat && lng) {
@@ -84,8 +162,11 @@ export default function LocationSection({
                 mapInstance.current.off();
                 mapInstance.current.remove();
                 mapInstance.current = null;
+                baseLayerRef.current = null;
+                overlayLayerRef.current = null;
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showMap]);
 
     // Update marker when coordinates change
@@ -342,7 +423,7 @@ export default function LocationSection({
                     </button>
                 </div>
 
-                {/* Map Container with Floating Button */}
+                {/* Map Container with Floating Buttons */}
                 {showMap && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {mapError && (
@@ -359,7 +440,7 @@ export default function LocationSection({
                             </div>
                         )}
 
-                        {/* Map with Floating Button */}
+                        {/* Map with Floating Buttons */}
                         <div
                             ref={mapContainer}
                             style={{
@@ -378,6 +459,55 @@ export default function LocationSection({
                                     height: '100%',
                                 }}
                             />
+
+                            {/* Layer Switcher — opposite corner from the geolocation button */}
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: '10px',
+                                    right: isRTL ? 'auto' : '10px',
+                                    left: isRTL ? '10px' : 'auto',
+                                    zIndex: 1000,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '4px',
+                                    background: '#fff',
+                                    padding: '4px',
+                                    borderRadius: '10px',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                    border: '1px solid #e5e7eb',
+                                }}
+                            >
+                                {Object.entries(MAP_LAYERS).map(([key, layer]) => {
+                                    const active = mapLayerType === key;
+                                    return (
+                                        <button
+                                            key={key}
+                                            type="button"
+                                            onClick={() => handleLayerChange(key)}
+                                            title={isRTL ? layer.labelAr : layer.labelEn}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                padding: '6px 8px',
+                                                border: 'none',
+                                                borderRadius: '7px',
+                                                background: active ? '#185FA5' : 'transparent',
+                                                color: active ? '#fff' : '#374151',
+                                                cursor: 'pointer',
+                                                fontSize: '12px',
+                                                fontWeight: active ? 600 : 500,
+                                                whiteSpace: 'nowrap',
+                                                transition: 'all 0.15s',
+                                            }}
+                                        >
+                                            <span style={{ fontSize: '14px' }}>{layer.icon}</span>
+                                            <span>{isRTL ? layer.labelAr : layer.labelEn}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
 
                             {/* Floating Location Button on Map */}
                             <button
@@ -430,8 +560,8 @@ export default function LocationSection({
                             }}
                         >
                             {isRTL
-                                ? '💡 انقر على الخريطة لتعيين الموقع أو اضغط أيقونة الموقع'
-                                : '💡 Click on the map to set location or press location icon'}
+                                ? '💡 انقر على الخريطة لتعيين الموقع أو اضغط أيقونة الموقع — يمكنك أيضاً تغيير نوع الخريطة من الأعلى'
+                                : '💡 Click on the map to set location or press the location icon — you can also switch the map type from the top control'}
                         </div>
                     </div>
                 )}
@@ -549,6 +679,7 @@ export default function LocationSection({
                     <ul style={{ margin: '4px 0 0 0', paddingLeft: isRTL ? '0' : '20px', paddingRight: isRTL ? '20px' : '0' }}>
                         <li>{isRTL ? 'انقر على الخريطة لتعيين الموقع تلقائياً' : 'Click on map to auto-set coordinates'}</li>
                         <li>{isRTL ? 'أو أدخل الإحداثيات يدوياً' : 'Or enter coordinates manually'}</li>
+                        <li>{isRTL ? 'يمكنك التبديل بين خريطة الشوارع والقمر الصناعي والتضاريس' : 'You can switch between street, satellite, and terrain views'}</li>
                         <li>{isRTL ? 'نطاق خط العرض: -90 إلى 90' : 'Latitude range: -90 to 90'}</li>
                         <li>{isRTL ? 'نطاق خط الطول: -180 إلى 180' : 'Longitude range: -180 to 180'}</li>
                     </ul>

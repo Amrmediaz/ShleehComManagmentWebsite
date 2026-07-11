@@ -1,6 +1,7 @@
 import React from 'react';
 import DetailRow from './DetailRow.jsx';
 import SectionCard from './SectionCard.jsx';
+import RialSymbol from '../OmaniRial.jsx';
 import { getGoogleMapsUrl } from '../../../core/utils/helper/Helpers.js';
 import '../../styles/Buildingdetails.css';
 
@@ -18,8 +19,16 @@ import '../../styles/Buildingdetails.css';
 const BuildingDetailsTab = ({ building, lang, t }) => {
     const raw = building.raw || {};
 
+    const renderPrice = (amount) => (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            {amount}
+            <RialSymbol style={{ width: '0.85em', height: '0.85em' }} />
+        </span>
+    );
+
     return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+
             {/* Location Section */}
             <SectionCard title={t('location') || 'Location'} icon="fa-solid fa-map-pin">
                 <DetailRow icon="fa-solid fa-map" label={t('governorate') || 'Governorate'} value={building.governorate} />
@@ -51,8 +60,8 @@ const BuildingDetailsTab = ({ building, lang, t }) => {
 
             {/* Pricing Section */}
             <SectionCard title={t('pricing') || 'Pricing'} icon="fa-solid fa-money-bill-wave">
-                <DetailRow icon="fa-solid fa-arrow-down" label={t('min_rent') || 'Min Rent'} value={raw.minimumRent ? `OMR ${raw.minimumRent}` : null} />
-                <DetailRow icon="fa-solid fa-arrow-up" label={t('max_rent') || 'Max Rent'} value={raw.maxRent ? `OMR ${raw.maxRent}` : null} />
+                <DetailRow icon="fa-solid fa-arrow-down" label={t('min_rent') || 'Min Rent'} value={raw.minimumRent ? renderPrice(raw.minimumRent) : null} />
+                <DetailRow icon="fa-solid fa-arrow-up" label={t('max_rent') || 'Max Rent'} value={raw.maxRent ? renderPrice(raw.maxRent) : null} />
                 <DetailRow icon="fa-solid fa-calendar-minus" label={t('min_days') || 'Minimum Days'} value={raw.minDays} />
                 <DetailRow icon="fa-solid fa-shield-halved" label={t('accept_deposit') || 'Accepts Deposit'} value={raw.acceptDownPay ? t('yes') || 'Yes' : t('no') || 'No'} />
                 <DetailRow icon="fa-solid fa-credit-card" label={t('online_pay') || 'Online Payment'} value={raw.onlinePay ? t('yes') || 'Yes' : t('no') || 'No'} />

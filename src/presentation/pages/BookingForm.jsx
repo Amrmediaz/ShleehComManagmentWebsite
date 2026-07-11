@@ -93,14 +93,14 @@ export default function NewBookingScreen({ building, onSaveBooking }) {
 
                 <div style={{ background: 'var(--primary-light)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid #bfdbfe' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span>{t('base_cost')}:</span> <strong>OMR {prices.base}</strong>
+                        <span>{t('base_cost')}:</span> <strong>{t('OMR')}{prices.base}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: 'var(--danger)' }}>
-                        <span>{t('discount_applied')}:</span> <strong>- OMR {prices.discount}</strong>
+                        <span>{t('discount_applied')}:</span> <strong>-{prices.discount} {t('OMR')}</strong>
                     </div>
                     <hr style={{ margin: '12px 0', border: 0, borderTop: '1px solid #bfdbfe' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 800 }}>
-                        <span>{t('grand_total')}:</span> <span style={{ color: 'var(--primary)' }}>OMR {prices.total}</span>
+                        <span>{t('grand_total')}:</span> <span style={{ color: 'var(--primary)' }}> {prices.total} {t('OMR')}</span>
                     </div>
                 </div>
 

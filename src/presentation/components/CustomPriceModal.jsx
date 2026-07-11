@@ -43,7 +43,7 @@ export default function CustomPriceModal({ isOpen, onClose, roomTypes }) {
                     </div>
                     <div style={{ marginTop: '15px', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
                         <div style={{ flexGrow: 1 }}>
-                            <label>Price per Night (OMR)</label>
+                            <label>Price per Night ({t('OMR')})</label>
                             <input type="number" className="form-control" placeholder="e.g., 55" value={newRange.price} onChange={(e) => setNewRange({...newRange, price: e.target.value})} />
                         </div>
                         <button className="btn btn-success" onClick={handleAdd} style={{ height: '44px' }}>
@@ -67,7 +67,7 @@ export default function CustomPriceModal({ isOpen, onClose, roomTypes }) {
                                 <span className="badge badge-info">{range.from} → {range.to}</span>
                                 <span style={{ fontWeight: 'bold' }}>
                                     <i className="fa-solid fa-coins" style={{ color: '#d97706', marginRight: '5px' }} /> 
-                                    OMR {range.price} / night <span style={{ color: '#64748b', fontWeight: 'normal' }}>({range.days} days)</span>
+                                   {t('OMR')}{range.price} / night <span style={{ color: '#64748b', fontWeight: 'normal' }}>({range.days} days)</span>
                                 </span>
                                 <button className="btn btn-danger" onClick={() => setSavedRanges(savedRanges.filter(s => s.id !== range.id))}>
                                     <i className="fa-solid fa-trash" /> Remove

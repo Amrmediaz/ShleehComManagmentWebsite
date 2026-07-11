@@ -8,6 +8,11 @@ import LoginPage from './presentation/pages/Login.jsx';
 import RegisterPage from './presentation/pages/Register.jsx';
 import ResetPassword from './presentation/pages/ResetPassword.jsx';
 import { dictionary } from './core/localization/dictionary';
+import CalendarViewPage from "./presentation/pages/CalendarViewPage.jsx";
+import Dashboard from "./presentation/pages/Dashboard.jsx";
+import BookingList from "./presentation/pages/BookingList.jsx";
+import BookingForm from "./presentation/pages/BookingForm.jsx";
+import BookingListPage from "./presentation/pages/BookingList.jsx";
 
 // 🔒 Protected Route — checks token
 const ProtectedRoute = ({ children }) => {
@@ -83,12 +88,12 @@ export default function App() {
                                             t={t}
                                         />
                                     )}
-                                    {/*{currentScreen === 'calendar' && (*/}
-                                    {/*    <CalendarView*/}
-                                    {/*        building={selectedBuilding}*/}
-                                    {/*        t={t}*/}
-                                    {/*    />*/}
-                                    {/*)}*/}
+                                    {currentScreen === 'calendar' && (
+                                        <CalendarViewPage
+                                            building={selectedBuilding}
+                                            t={t}
+                                        />
+                                    )}
                                     {/*{currentScreen === 'new-booking' && (*/}
                                     {/*    <BookingForm*/}
                                     {/*        building={selectedBuilding}*/}
@@ -96,12 +101,12 @@ export default function App() {
                                     {/*        t={t}*/}
                                     {/*    />*/}
                                     {/*)}*/}
-                                    {/*{currentScreen === 'bookings-list' && (*/}
-                                    {/*    <BookingList*/}
-                                    {/*        building={selectedBuilding}*/}
-                                    {/*        t={t}*/}
-                                    {/*    />*/}
-                                    {/*)}*/}
+                                    {currentScreen === 'bookings-list' && (
+                                        <BookingListPage
+                                            building={selectedBuilding}
+                                            t={t}
+                                        />
+                                    )}
                                 </main>
                             </div>
                         </div>

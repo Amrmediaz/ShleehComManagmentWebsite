@@ -3,8 +3,9 @@ import { useTranslation } from '../../context/LanguageContext.jsx';
 import { AddFlatUseCase } from '../../../core/useCases/AddFlatUseCase';
 import { fileUploadApiClient } from '/src/data/FileUploadClient.js';
 import { IconX, IconPlus, IconTrash, IconDeviceFloppy } from '@tabler/icons-react';
+import RialSymbol from '../OmaniRial.jsx';
 
-export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
+export default function AddRoomModal({id,onSave, onClose, buildingId, buildingName }) {
     const { t } = useTranslation();
 
     const [formData, setFormData] = useState({
@@ -68,9 +69,27 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        // 1. Define your Regex patterns
+        const arabicRegex = /^[\u0600-\u06FF\s0-9\u0660-\u0669]*$/; // Allows Arabic letters, numbers, and spaces
+        const englishRegex = /^[a-zA-Z0-9\s.,!?-]*$/; // Allows English letters, numbers, and basic punctuation
+
+        // 2. Validate based on field name
+        if (name === 'nameAr' && value !== "" && !arabicRegex.test(value)) {
+            return; // Reject the change if it doesn't match the Arabic regex
+        }
+
+        if (name === 'nameEn' && value !== "" && !englishRegex.test(value)) {
+            return; // Reject the change if it doesn't match the English regex
+        }
+
+        // 3. Update state
         setFormData(prev => ({ ...prev, [name]: value }));
-        // clear inline error as user types
-        if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
+
+        // 4. Clear inline error as user types
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: null }));
+        }
     };
 
     const toggleElectronic = (id) =>
@@ -105,11 +124,22 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
         if (!formData.nameEn.trim())               e.nameEn               = t('error_name_en_required')   || 'English name is required';
         if (!formData.count || Number(formData.count) < 1)
             e.count                = t('error_count_required')     || 'Total count is required';
+        if (!formData.beds_number || Number(formData.beds_number) < 1)
+            e.beds_number                = t('error_beds_required')     || '';
+        if (!formData.visitors_count || Number(formData.visitors_count) < 1)
+            e.visitors_count                = t('error_visitors_required')     || '';
+        if (!formData.tolits_number || Number(formData.tolits_number) < 1)
+            e.tolits_number                = t('error_bathrooms_required')     || '';
+
         if (!formData.unit_breakdown_id)           e.unit_breakdown_id    = t('error_unit_type_required') || 'Unit type is required';
         if (!formData.price_per_night || Number(formData.price_per_night) < 0)
             e.price_per_night      = t('error_base_rate_required') || 'Base rate is required';
         if (!formData.weekend_price_per_night || Number(formData.weekend_price_per_night) < 0)
             e.weekend_price_per_night = t('error_weekend_rate_required') || 'Weekend rate is required';
+
+        if(selectedElectronics.length === 0) {
+            e.electronic_devices = t('error_electronic_devices_required') || '';
+        }
         return e;
     };
 
@@ -136,10 +166,18 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
                 } else {
                     console.error('[AddRoomModal] Cover upload failed');
                 }
+            } else {
+                setStatusMessage({ text: t('error_cover_required') || 'Server error, please try again.', isError: true });
+                return
             }
 
             // 3. Upload gallery
             const flatImages = [];
+            if (galFiles.length === 0) {
+
+                setStatusMessage({ text: t('error_images_required') || 'Server error, please try again.', isError: true });
+                return
+            }
             for (const { file } of galFiles) {
                 try {
                     const res = JSON.parse(await fileUploadApiClient.uploadFile(file));
@@ -152,7 +190,7 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
             }
 
             // 4. Build payload — keys match FlatEntity constructor exactly
-            
+
             const payload = {
                 hotelbuildingID:         id || 0,
                 nameAr:                  formData.nameAr.trim(),
@@ -187,7 +225,7 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
             console.log(payload);
 
             // 5. Use case: validate → FlatEntity → API
-            const { validationError, result } = await AddFlatUseCase.execute(payload);
+            const { validationError, result } = await AddFlatUseCase.execute(payload,t);
 
             if (validationError) {
                 setStatusMessage({ text: t(validationError) || validationError, isError: true });
@@ -196,6 +234,9 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
 
             if (result?.status === true) {
                 setStatusMessage({ text: t('flat_added_success') || 'Flat added successfully!', isError: false });
+                if (onSave) {
+                    onSave();
+                }
                 setTimeout(() => onClose(), 1400);
             } else {
                 setStatusMessage({ text: result?.message || t('flat_add_failed') || 'Failed to add flat.', isError: true });
@@ -219,6 +260,18 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
     const errStyle = { fontSize: '11px', color: '#ef4444', marginTop: '3px' };
     const reqStar  = <span style={{ color: '#ef4444' }}> *</span>;
 
+    // Currency icon overlay for price inputs
+    const currencyIconStyle = {
+        position: 'absolute',
+        top: 'calc(50% + 2px)',
+        insetInlineEnd: '10px',
+        transform: 'translateY(-50%)',
+        width: '16px',
+        height: '16px',
+        color: '#9ca3af',
+        pointerEvents: 'none',
+    };
+
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '12px', boxSizing: 'border-box' }}>
             <div style={{ background: 'white', borderRadius: '16px', maxWidth: '640px', width: '100%', maxHeight: 'calc(100vh - 24px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
@@ -237,11 +290,7 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
                 <form onSubmit={handleSubmit} style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1, boxSizing: 'border-box' }}>
 
                     {/* Status banner */}
-                    {statusMessage.text && (
-                        <div style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: statusMessage.isError ? '#fef2f2' : '#f0fdf4', color: statusMessage.isError ? '#dc2626' : '#16a34a', border: `1px solid ${statusMessage.isError ? '#fecaca' : '#bbf7d0'}` }}>
-                            {statusMessage.text}
-                        </div>
-                    )}
+
 
                     {/* Names — AR + EN side by side */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -255,6 +304,7 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
                                 onChange={handleChange}
                                 style={{ ...inpStyle('nameAr'), direction: 'rtl', textAlign: 'right' }}
                             />
+
                             {errors.nameAr && <div style={errStyle}>{errors.nameAr}</div>}
                         </div>
                         <div>
@@ -324,22 +374,28 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
                     {/* Capacity / beds / toilets */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
                         <div>
-                            <label style={lblStyle}>{t('capacity')}</label>
+                            <label style={lblStyle}>{t('capacity')}{reqStar}</label>
                             <input name="visitors_count" type="text" value={formData.visitors_count} placeholder="4 Adults" onChange={handleChange} style={inpStyle('visitors_count')} />
+                            {errors.visitors_count && <div style={errStyle}>{errors.visitors_count}</div>}
+
                         </div>
                         <div>
-                            <label style={lblStyle}>{t('beds_number')}</label>
+                            <label style={lblStyle}>{t('beds_number')}{reqStar}</label>
                             <input name="beds_number" type="number" value={formData.beds_number} placeholder="2" onChange={handleChange} style={inpStyle('beds_number')} />
+                            {errors.beds_number && <div style={errStyle}>{errors.beds_number}</div>}
+
                         </div>
                         <div>
-                            <label style={lblStyle}>{t('toilets_number')}</label>
+                            <label style={lblStyle}>{t('toilets_number')}{reqStar}</label>
                             <input name="tolits_number" type="number" value={formData.tolits_number} placeholder="1" onChange={handleChange} style={inpStyle('tolits_number')} />
+                            {errors.tolits_number && <div style={errStyle}>{errors.tolits_number}</div>}
+
                         </div>
                     </div>
 
                     {/* Electronics */}
                     <div>
-                        <label style={lblStyle}>{t('apartment_electronics') || 'In-Unit Electronics'}</label>
+                        <label style={lblStyle}>{t('apartment_electronics') || 'In-Unit Electronics'}{reqStar}</label>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
                             {electronicsOptions.map((item) => {
                                 const isSelected = selectedElectronics.includes(item.id);
@@ -350,18 +406,26 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
                                 );
                             })}
                         </div>
+                        {errors.electronic_devices && <div style={errStyle}>{errors.electronic_devices}</div>}
+
                     </div>
 
                     {/* Prices */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div>
                             <label style={lblStyle}>{t('base_rate')}{reqStar}</label>
-                            <input name="price_per_night" type="number" step="0.001" value={formData.price_per_night} placeholder="40.000" onChange={handleChange} style={inpStyle('price_per_night')} />
+                            <div style={{ position: 'relative' }}>
+                                <input name="price_per_night" type="number" step="0.001" value={formData.price_per_night} placeholder="40.000" onChange={handleChange} style={{ ...inpStyle('price_per_night'), paddingInlineEnd: '32px' }} />
+                                <RialSymbol style={currencyIconStyle} />
+                            </div>
                             {errors.price_per_night && <div style={errStyle}>{errors.price_per_night}</div>}
                         </div>
                         <div>
                             <label style={lblStyle}>{t('weekend_rate')}{reqStar}</label>
-                            <input name="weekend_price_per_night" type="number" step="0.001" value={formData.weekend_price_per_night} placeholder="55.000" onChange={handleChange} style={inpStyle('weekend_price_per_night')} />
+                            <div style={{ position: 'relative' }}>
+                                <input name="weekend_price_per_night" type="number" step="0.001" value={formData.weekend_price_per_night} placeholder="55.000" onChange={handleChange} style={{ ...inpStyle('weekend_price_per_night'), paddingInlineEnd: '32px' }} />
+                                <RialSymbol style={currencyIconStyle} />
+                            </div>
                             {errors.weekend_price_per_night && <div style={errStyle}>{errors.weekend_price_per_night}</div>}
                         </div>
                     </div>
@@ -369,13 +433,16 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
                     {/* Insurance */}
                     <div>
                         <label style={lblStyle}>{t('insurance_amount')}</label>
-                        <input name="insurance_amount" type="number" step="0.001" value={formData.insurance_amount} placeholder="20.000" onChange={handleChange} style={inpStyle('insurance_amount')} />
+                        <div style={{ position: 'relative' }}>
+                            <input name="insurance_amount" type="number" step="0.001" value={formData.insurance_amount} placeholder="20.000" onChange={handleChange} style={{ ...inpStyle('insurance_amount'), paddingInlineEnd: '32px' }} />
+                            <RialSymbol style={currencyIconStyle} />
+                        </div>
                     </div>
 
                     {/* Media */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <div>
-                            <label style={lblStyle}>{t('cover_image')}</label>
+                            <label style={lblStyle}>{t('cover_image') }{reqStar}</label>
 
                             <div
                                 onClick={() => coverInputRef.current.click()}
@@ -422,7 +489,7 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
                         </div>
 
                         <div>
-                            <label style={lblStyle}>{t('media')}</label>
+                            <label style={lblStyle}>{t('media')}{reqStar}</label>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))', gap: '8px', marginTop: '4px' }}>
                                 {galFiles.map(({ preview }, index) => (
                                     <div key={index} style={{ width: '100%', aspectRatio: '1', borderRadius: '8px', background: `center/cover url(${preview})`, position: 'relative', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
@@ -445,6 +512,11 @@ export default function AddRoomModal({id, onClose, buildingId, buildingName }) {
                     </div>
 
                     {/* Actions */}
+                    {statusMessage.text && (
+                        <div style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: statusMessage.isError ? '#fef2f2' : '#f0fdf4', color: statusMessage.isError ? '#dc2626' : '#16a34a', border: `1px solid ${statusMessage.isError ? '#fecaca' : '#bbf7d0'}` }}>
+                            {statusMessage.text}
+                        </div>
+                    )}
                     <div style={{ marginTop: '12px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                         <button type="button" onClick={onClose} disabled={isLoading} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#fff', color: '#374151', fontSize: '13px', cursor: 'pointer' }}>
                             {t('cancel')}

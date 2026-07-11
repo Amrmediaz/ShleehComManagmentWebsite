@@ -8,6 +8,10 @@ export const validateFlatFields = ({
                                        count,
                                        price_per_night,
                                        weekend_price_per_night,
+                                       coverimg , flatImages ,  visitors_count,
+    bedsNumber,
+    bathroomsNumber,
+  
                                    }) => {
     // ── Names ────────────────────────────────────────────────────
     if (!nameAr?.trim()) return 'error_name_ar_required';
@@ -15,13 +19,17 @@ export const validateFlatFields = ({
 
     // ── Count ────────────────────────────────────────────────────
     if (!count || Number(count) < 1) return 'error_count_required';
+    if (!visitors_count || Number(visitors_count) < 1) return 'error_visitors_required';
+    if (!bedsNumber || Number(bedsNumber) < 1) return 'error_beds_required';
+    if (!bathroomsNumber || Number(bathroomsNumber) < 1) return 'error_bathrooms_required';
 
     // ── Pricing ──────────────────────────────────────────────────
     const base    = Number(price_per_night);
     const weekend = Number(weekend_price_per_night);
     if (!price_per_night || isNaN(base)    || base    < 0) return 'error_base_rate_required';
     if (!weekend_price_per_night || isNaN(weekend) || weekend < 0) return 'error_weekend_rate_required';
-
+    if (!coverimg) return t('error_cover_required');
+    if (!flatImages || flatImages.length === 0) return t('error_images_required');
     return null; // All good ✅
 };
 

@@ -57,8 +57,15 @@ export default function PolicySection({
                             style={{ direction: 'rtl' }}
                             placeholder="سياسة الإلغاء..."
                             value={cancelation_policyAr}
-                            onChange={e => setCancelPolicyAr(e.target.value)}
+                            onChange={e => {
+                                const value = e.target.value;
+                                
+                                if (value === '' || /^[\u0600-\u06FF\s]*$/.test(value)) {
+                                setCancelPolicyAr(e.target.value)}}}
                         />
+
+                      
+               
                     </div>
                     <div>
                         <label className="modal-label">
@@ -70,7 +77,13 @@ export default function PolicySection({
                             style={{ direction: 'ltr' }}
                             placeholder="Cancellation policy..."
                             value={cancelation_policyEn}
-                            onChange={e => setCancelPolicyEn(e.target.value)}
+                            onChange={e => {
+                                const value = e.target.value;
+
+                                if (value === '' || /^[A-Za-z0-9\s.,'-]*$/.test(value)) {
+                                    setCancelPolicyEn(e.target.value)
+                                }
+                            }}
                         />
                     </div>
                 </div>
@@ -87,19 +100,33 @@ export default function PolicySection({
                             style={{ direction: 'rtl' }}
                             placeholder="قواعد المبنى..."
                             value={buildingPolicyAr}
-                            onChange={e => setBuildingPolicyAr(e.target.value)}
+                            
+                            onChange={e => {
+                                const value = e.target.value;
+
+                                if (value === '' || /^[\u0600-\u06FF\s]*$/.test(value)) {
+                                    setBuildingPolicyAr(e.target.value)
+                                }
+                            }}
                         />
                     </div>
                     <div>
                         <label className="modal-label">
                             {isRTL ? 'سياسة المبنى (إنجليزي)' : 'Building Policy (English)'}
                         </label>
+                       
                         <textarea
                             className="modal-textarea"
                             style={{ direction: 'ltr' }}
                             placeholder="Building rules..."
                             value={buildingPolicyEn}
-                            onChange={e => setBuildingPolicyEn(e.target.value)}
+                            onChange={e => {
+                                const value = e.target.value;
+
+                                if (value === '' || /^[A-Za-z0-9\s.,'-]*$/.test(value)) {
+                                    setBuildingPolicyEn(e.target.value)
+                                }
+                            }}
                         />
                     </div>
                 </div>
