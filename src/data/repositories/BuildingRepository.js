@@ -128,6 +128,31 @@ export const BuildingRepository = {
     async updateFlat(payload) {
         const responseData = await buildingApiClient.putUpdateFlat(payload);
         return responseData;
-    }
+    },
+
+    /** Dedicated Today's Offer read — see TODAY-OFFER-API-SPEC.md Part 5. */
+    async getTodayOffer(buildingId) {
+        const data = await buildingApiClient.getTodayOffer(buildingId);
+        if (data?.status && data?.message) {
+            const m = data.message;
+            return {
+                // The TodayOfferSettings row's own id — 0 means "no row
+                // yet" (first save). Must be echoed back on the next
+                // update, or backend creates a duplicate row instead of
+                // editing this one.
+                id: Number(m.id) || 0,
+                todayOfferEnabled: !!m.todayOfferEnabled,
+                todayOfferPercent: Number(m.todayOfferPercent) || 0,
+                todayOfferTriggerHour: Number(m.todayOfferTriggerHour ?? 12),
+                todayOfferActive: !!m.todayOfferActive,
+            };
+        }
+        return null;
+    },
+
+    /** Dedicated Today's Offer write — see TODAY-OFFER-API-SPEC.md Part 5. */
+    async updateTodayOffer(payload) {
+        return await buildingApiClient.putUpdateTodayOffer(payload);
+    },
 };
  

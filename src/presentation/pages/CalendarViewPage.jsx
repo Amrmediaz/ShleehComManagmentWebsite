@@ -33,6 +33,13 @@ import '../styles/Buildingdetails.css';
 //       every other date's count stays untouched.
 // ---------------------------------------------------------------------------
 
+/*
+  NOTE: keep whatever import statements your real file already had at the top
+  (useTranslation, your icon imports, GetOwnerBuildingsFlatUseCase, useCalendarView, etc).
+  Those weren't shown in your original paste, so they aren't reproduced here —
+  everything else below is complete and self-contained, nothing abbreviated.
+*/
+
 export default function CalendarViewPage({ building }) {
     const { t, lang } = useTranslation();
 
@@ -40,10 +47,8 @@ export default function CalendarViewPage({ building }) {
     const [selectedFlatId, setSelectedFlatId] = useState(null);
     const [loadingFlats, setLoadingFlats] = useState(false);
 
-    // mode: 'block' (new date) | 'blocked' (existing date — edit count or unblock) | 'block-multi' (bulk block)
     const [dayModal, setDayModal] = useState({ open: false, mode: 'block', dateStr: null, count: '1' });
 
-    // Multi-select mode: pick many dates, then act on all of them at once.
     const [multiSelectMode, setMultiSelectMode] = useState(false);
     const [selectedDates, setSelectedDates] = useState(new Set());
 
@@ -90,12 +95,10 @@ export default function CalendarViewPage({ building }) {
         loadFlats();
     }, [building?.id, building?.raw?.id]);
 
-    // Leaving multi-select mode always clears the current selection.
     useEffect(() => {
         if (!multiSelectMode) setSelectedDates(new Set());
     }, [multiSelectMode]);
 
-    // Changing flats invalidates any in-progress selection.
     useEffect(() => {
         setSelectedDates(new Set());
     }, [selectedFlatId]);
@@ -147,7 +150,6 @@ export default function CalendarViewPage({ building }) {
 
     const maxUnitsForFlat = selectedFlat?.unitsCount || selectedFlat?.unitCount || undefined;
 
-    // --- multi-select helpers ------------------------------------------
     const toggleMultiSelectMode = () => {
         if (isProcessing) return;
         setMultiSelectMode(prev => !prev);
@@ -171,7 +173,6 @@ export default function CalendarViewPage({ building }) {
     const canBulkBlock = selectedArray.length > 0 && selectedBlockedCount === 0;
     const canBulkUnblock = selectedArray.length > 0 && selectedAvailableCount === 0;
 
-    // --- single-day modal helpers ---------------------------------------
     const openBlockModal = (dateStr) => {
         setDayModal({ open: true, mode: 'block', dateStr, count: '1' });
     };
@@ -382,7 +383,12 @@ export default function CalendarViewPage({ building }) {
         },
         calendarWrapper: {
             display: 'grid',
-            gridTemplateColumns: isRTL ? '300px 1fr' : '1fr 300px',
+            // Always '1fr 300px' — do NOT swap these for RTL. CSS Grid already
+            // mirrors track position automatically under direction:rtl (track 1
+            // renders on the physical right instead of the left). Swapping the
+            // sizes here on top of that double-flips it, forcing the calendar
+            // (first element) into the small 300px track instead of the large one.
+            gridTemplateColumns: '1fr 300px',
             gap: '20px',
             marginBottom: '24px',
             alignItems: 'start',
@@ -704,386 +710,448 @@ export default function CalendarViewPage({ building }) {
     }
 
     return (
-        <div style={styles.container}>
-            {/* Header */}
-            <div style={styles.header}>
-                <h1 style={styles.title}>📅 {t('calendar_view')}</h1>
-                <p style={styles.subtitle}>{t('manage_bookings_and_blocked_days')}</p>
-            </div>
+        <>
+            <style>{`
+                /* Prevent ANY horizontal overflow from scrolling the whole RTL page
+                   past the app sidebar/topbar. This is the fix for "sidebar disappears
+                   in Arabic" — RTL pages default-scroll to the right edge when the
+                   page is wider than the viewport, hiding whatever sits at the left. */
+                html, body {
+                    overflow-x: hidden !important;
+                    max-width: 100vw !important;
+                }
+                .cv-container {
+                    max-width: 100% !important;
+                    overflow-x: hidden;
+                }
+                .cv-wrapper {
+                    min-width: 0;
+                }
+                .cv-wrapper > * {
+                    min-width: 0; /* grid items default to min-width:auto and can force overflow */
+                }
 
-            {/* Flat Selector */}
-            <div style={styles.selectorSection}>
-                <label style={styles.selectorLabel}>{t('select_flat')}:</label>
-                <select
-                    value={selectedFlatId || ''}
-                    onChange={(e) => setSelectedFlatId(Number(e.target.value))}
-                    style={styles.select}
-                    disabled={loadingFlats}
-                >
-                    <option value="">{t('choose_flat')}</option>
-                    {flats.map(flat => (
-                        <option key={flat.id} value={flat.id}>
-                            {flat.nameEn || flat.nameAr}
-                        </option>
-                    ))}
-                </select>
-            </div>
+                @media (max-width: 900px) {
+                    .cv-wrapper {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
 
-            {!selectedFlatId ? (
-                <div style={{ textAlign: 'center', padding: '60px 40px', color: '#9ca3af' }}>
-                    <div style={{ fontSize: '40px', marginBottom: '12px' }}>👆</div>
-                    <p style={{ margin: 0, fontSize: '15px' }}>{t('select_flat_to_continue')}</p>
+                @media (max-width: 640px) {
+                    .cv-container {
+                        padding: 14px !important;
+                    }
+                    .cv-selector-section,
+                    .cv-multi-toggle-row,
+                    .cv-selection-bar {
+                        flex-direction: column !important;
+                        align-items: stretch !important;
+                    }
+                    .cv-selector-label {
+                        min-width: 0 !important;
+                        margin-bottom: 4px;
+                    }
+                    .cv-selection-actions {
+                        flex-wrap: wrap !important;
+                        justify-content: flex-start !important;
+                    }
+                    .cv-modal-box {
+                        width: 100% !important;
+                    }
+                    .cv-modal-actions {
+                        flex-direction: column !important;
+                    }
+                    .cv-modal-actions button {
+                        width: 100% !important;
+                    }
+                }
+
+                @media (max-width: 420px) {
+                    .cv-day-cell {
+                        min-height: 36px !important;
+                        font-size: 12px !important;
+                        padding: 4px 2px !important;
+                    }
+                    .cv-month-title {
+                        font-size: 16px !important;
+                    }
+                }
+            `}</style>
+
+            <div style={styles.container} className="cv-container">
+                <div style={styles.header}>
+                    <h1 style={styles.title}>📅 {t('calendar_view')}</h1>
+                    <p style={styles.subtitle}>{t('manage_bookings_and_blocked_days')}</p>
                 </div>
-            ) : (
-                <>
-                    <div style={styles.multiToggleRow}>
-                        <p style={{ ...styles.hintBanner, margin: 0, flex: 1 }}>
-                            💡 {multiSelectMode
-                            ? (t('multi_select_hint')
-                                || 'اضغط على أي عدد من الأيام (متاحة أو محجوبة) لتحديدها، ثم اختر الإجراء المناسب من الشريط أدناه.')
-                            : (t('click_to_block_unblock')
-                                || 'اضغط على أي يوم متاح لاختيار عدد الوحدات وحجبه. اضغط على يوم محجوب (برتقالي) لتعديل عدد وحداته أو إلغاء الحجب — كل يوم بعدده الخاص.')}
-                        </p>
-                        <button
-                            type="button"
-                            onClick={toggleMultiSelectMode}
-                            disabled={isProcessing}
-                            style={styles.multiToggleBtn(multiSelectMode)}
-                        >
-                            {multiSelectMode ? <IconX size={16} /> : <IconChecks size={16} />}
-                            {multiSelectMode
-                                ? (t('exit_multi_select') || 'إلغاء التحديد المتعدد')
-                                : (t('multi_select') || 'تحديد متعدد')}
-                        </button>
+
+                <div style={styles.selectorSection} className="cv-selector-section">
+                    <label style={styles.selectorLabel} className="cv-selector-label">{t('select_flat')}:</label>
+                    <select
+                        value={selectedFlatId || ''}
+                        onChange={(e) => setSelectedFlatId(Number(e.target.value))}
+                        style={styles.select}
+                        disabled={loadingFlats}
+                    >
+                        <option value="">{t('choose_flat')}</option>
+                        {flats.map(flat => (
+                            <option key={flat.id} value={flat.id}>
+                                {flat.nameEn || flat.nameAr}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {!selectedFlatId ? (
+                    <div style={{ textAlign: 'center', padding: '60px 40px', color: '#9ca3af' }}>
+                        <div style={{ fontSize: '40px', marginBottom: '12px' }}>👆</div>
+                        <p style={{ margin: 0, fontSize: '15px' }}>{t('select_flat_to_continue')}</p>
                     </div>
-
-                    {statusMessage.text && (
-                        <div style={styles.statusMessage(statusMessage.isError)}>
-                            <span>{statusMessage.isError ? '⚠️' : '✅'}</span>
-                            {statusMessage.text}
-                        </div>
-                    )}
-
-                    {multiSelectMode && selectedArray.length > 0 && (
-                        <div style={styles.selectionBar}>
-                            <span style={styles.selectionCount}>
-                                <IconSquareCheck size={16} />
-                                {selectedArray.length} {t('days_selected') || 'يوم محدد'}
-                                {hasMixedSelection && (
-                                    <span style={{ color: '#fca5a5', fontWeight: 500 }}>
-                                        — {t('mixed_selection_hint') || 'اختر أيام من نفس النوع (متاحة أو محجوبة) لتنفيذ إجراء جماعي'}
-                                    </span>
-                                )}
-                            </span>
-                            <div style={styles.selectionActions}>
-                                {canBulkBlock && (
-                                    <button
-                                        type="button"
-                                        onClick={openMultiBlockModal}
-                                        disabled={isProcessing}
-                                        style={styles.pillBtn('block', isProcessing)}
-                                    >
-                                        <IconLock size={14} />
-                                        {t('block_n_days', { count: selectedArray.length }) || `حجب ${selectedArray.length} أيام`}
-                                    </button>
-                                )}
-                                {canBulkUnblock && (
-                                    <button
-                                        type="button"
-                                        onClick={handleBulkUnblock}
-                                        disabled={isProcessing}
-                                        style={styles.pillBtn('unblock', isProcessing)}
-                                    >
-                                        <IconLockOpen size={14} />
-                                        {isProcessing
-                                            ? (t('processing') || '...جارٍ الحفظ')
-                                            : (t('unblock_n_days', { count: selectedArray.length }) || `إلغاء حجب ${selectedArray.length} أيام`)}
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={clearSelection}
-                                    disabled={isProcessing}
-                                    style={styles.pillBtn('clear', isProcessing)}
-                                >
-                                    <IconX size={14} />
-                                    {t('clear_selection') || 'مسح التحديد'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    <div style={styles.calendarWrapper}>
-                        {/* Calendar */}
-                        <div style={styles.calendarSection}>
-                            <div style={styles.calendarNav}>
-                                <h2 style={styles.monthTitle}>{monthName}</h2>
-                                <div style={styles.navButtons}>
-                                    {isRTL ? (
-                                        <>
-                                            <button onClick={nextMonth} style={styles.navButton} title={t('next_month')}>
-                                                <IconChevronLeft size={17} />
-                                            </button>
-                                            <button onClick={goToToday} style={styles.navButton}>{t('today')}</button>
-                                            <button onClick={prevMonth} style={styles.navButton} title={t('prev_month')}>
-                                                <IconChevronRight size={17} />
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button onClick={prevMonth} style={styles.navButton} title={t('prev_month')}>
-                                                <IconChevronLeft size={17} />
-                                            </button>
-                                            <button onClick={goToToday} style={styles.navButton}>{t('today')}</button>
-                                            <button onClick={nextMonth} style={styles.navButton} title={t('next_month')}>
-                                                <IconChevronRight size={17} />
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div style={styles.calendarGrid}>
-                                {dayNames.map(day => (
-                                    <div key={day} style={styles.dayHead}>{day}</div>
-                                ))}
-
-                                {calendarDays.map((day, idx) => {
-                                    if (!day) return <div key={`empty-${idx}`} />;
-
-                                    const dateStr = formatDate(day);
-                                    const booked = isDateBooked(dateStr);
-                                    const blocked = isDateBlocked(dateStr);
-                                    const past = isPastDate(dateStr);
-                                    const unitsForDay = blocked ? getBlockedUnitsForDate(dateStr) : 0;
-                                    const isSelected = multiSelectMode && selectedDates.has(dateStr);
-
-                                    let bg = '#f9fafb', color = '#374151', border = '1.5px solid #f3f4f6', cursor = 'pointer', opacity = 1;
-
-                                    if (booked) {
-                                        bg = '#fee2e2'; color = '#991b1b'; border = '1.5px solid #fca5a5'; cursor = 'not-allowed';
-                                    } else if (blocked) {
-                                        bg = '#ffedd5'; color = '#92400e'; border = '1.5px solid #fdba74';
-                                        cursor = isProcessing ? 'not-allowed' : 'pointer';
-                                        opacity = isProcessing ? 0.6 : 1;
-                                    } else if (past) {
-                                        bg = '#f3f4f6'; color = '#d1d5db'; cursor = 'not-allowed'; opacity = 0.5;
-                                    } else {
-                                        cursor = isProcessing ? 'not-allowed' : 'pointer';
-                                        opacity = isProcessing ? 0.6 : 1;
-                                    }
-
-                                    const cellStyle = {
-                                        ...styles.dayCell(bg, color, border, cursor, opacity),
-                                        ...(isSelected ? {
-                                            boxShadow: '0 0 0 2px #185FA5',
-                                            border: '1.5px solid #185FA5',
-                                        } : {}),
-                                    };
-
-                                    const handleDateClick = () => {
-                                        if (isProcessing) return;
-                                        if (booked) {
-                                            setStatusMessage({ text: t('cannot_change_booked_date') || 'هذا اليوم محجوز من عميل ولا يمكن تعديله', isError: true });
-                                            return;
-                                        }
-                                        if (past) {
-                                            setStatusMessage({ text: t('cannot_block_past_date') || 'لا يمكن حجب تاريخ سابق', isError: true });
-                                            return;
-                                        }
-                                        if (multiSelectMode) {
-                                            toggleDateSelection(dateStr);
-                                            return;
-                                        }
-                                        if (blocked) {
-                                            openEditModal(dateStr);
-                                        } else {
-                                            openBlockModal(dateStr);
-                                        }
-                                    };
-
-                                    return (
-                                        <div
-                                            key={day}
-                                            style={cellStyle}
-                                            onClick={handleDateClick}
-                                            title={
-                                                past ? (t('past_date') || 'تاريخ سابق')
-                                                    : booked ? (t('booked_date') || 'محجوز')
-                                                        : blocked ? `${t('click_to_edit') || 'اضغط للتعديل'} (${unitsForDay})`
-                                                            : (t('click_to_block') || 'اضغط للحجب')
-                                            }
-                                        >
-                                            {isSelected && (
-                                                <span style={styles.selectedCheckBadge}>
-                                                    <IconSquareCheck size={11} />
-                                                </span>
-                                            )}
-                                            {blocked && <span style={styles.unitsBadge}>{unitsForDay}</span>}
-                                            <span>{day}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Sidebar */}
-                        <div style={styles.sidebar}>
-                            {/* Legend */}
-                            <div style={styles.sidebarCard}>
-                                <h3 style={styles.cardTitle}>📋 {t('legend')}</h3>
-                                <div style={styles.legend}>
-                                    <div style={styles.legendItem}>
-                                        <div style={styles.legendColor('#f9fafb')} />
-                                        <span>{t('available') || 'متاح'}</span>
-                                    </div>
-                                    <div style={styles.legendItem}>
-                                        <div style={styles.legendColor('#ffedd5')} />
-                                        <span>{t('blocked') || 'محجوب (الرقم = عدد وحداته)'}</span>
-                                    </div>
-                                    <div style={styles.legendItem}>
-                                        <div style={styles.legendColor('#fee2e2')} />
-                                        <span>{t('booked') || 'محجوز من عميل'}</span>
-                                    </div>
-                                    <div style={styles.legendItem}>
-                                        <div style={styles.legendColor('#f3f4f6', { opacity: 0.5 })} />
-                                        <span style={{ color: '#9ca3af' }}>{t('past_dates') || 'تاريخ سابق'}</span>
-                                    </div>
-                                    {multiSelectMode && (
-                                        <div style={styles.legendItem}>
-                                            <div style={{ ...styles.legendColor('#f9fafb'), boxShadow: '0 0 0 2px #185FA5' }} />
-                                            <span>{t('selected') || 'محدد'}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Blocked days list — each with its own units count */}
-                            <div style={styles.sidebarCard}>
-                                <h3 style={styles.cardTitle}>🔒 {t('blocked_days')} ({sortedBlockedDays.length})</h3>
-                                {sortedBlockedDays.length === 0 ? (
-                                    <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>
-                                        {t('no_blocked_days') || 'لا يوجد أيام محجوبة'}
-                                    </p>
-                                ) : (
-                                    <div style={styles.blockedList}>
-                                        {sortedBlockedDays.map(({ date, unitsCount }) => (
-                                            <div
-                                                key={date}
-                                                style={{
-                                                    ...styles.blockedRow,
-                                                    ...(multiSelectMode && selectedDates.has(date) ? { boxShadow: '0 0 0 2px #185FA5' } : {}),
-                                                }}
-                                                onClick={() => multiSelectMode ? toggleDateSelection(date) : openEditModal(date)}
-                                            >
-                                                <span>{formatDateDisplay(date)}</span>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <strong>{unitsCount} {t('units') || 'وحدة'}</strong>
-                                                    {!multiSelectMode && (
-                                                        <button
-                                                            style={styles.blockedRowBtn}
-                                                            onClick={(e) => { e.stopPropagation(); openEditModal(date); }}
-                                                            title={t('edit') || 'تعديل'}
-                                                        >
-                                                            <IconPencil size={13} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Flat Info */}
-                            {selectedFlat && (
-                                <div style={styles.sidebarCard}>
-                                    <h3 style={styles.cardTitle}>🏠 {t('flat_info')}</h3>
-                                    <div style={{ fontSize: '13px', color: '#4b5563', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ fontWeight: 700, color: '#111827', fontSize: '14px' }}>
-                                            {selectedFlat.nameEn || selectedFlat.nameAr}
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                            <span style={{ padding: '3px 8px', background: '#f0fdf4', color: '#16a34a', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: '1px solid #bbf7d0' }}>
-                                                💰{t('OMR')}{selectedFlat.price_per_night}
-                                            </span>
-                                            <span style={{ padding: '3px 8px', background: '#eff6ff', color: '#1d4ed8', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: '1px solid #bfdbfe' }}>
-                                                👥 {selectedFlat.visitors_count || 0} {t('guests')}
-                                            </span>
-                                            <span style={{ padding: '3px 8px', background: '#faf5ff', color: '#7c3aed', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: '1px solid #e9d5ff' }}>
-                                                🛏️ {selectedFlat.bedsNumber || 0} {t('beds')}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {/* Single modal: block a free date, edit/unblock a blocked one, or bulk-block a selection */}
-            {dayModal.open && (
-                <div style={styles.modalOverlay} onClick={closeModal}>
-                    <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-                        <h3 style={styles.modalTitle}>
-                            {dayModal.mode === 'blocked'
-                                ? (t('edit_blocked_day') || 'تعديل يوم محجوب')
-                                : dayModal.mode === 'block-multi'
-                                    ? (t('block_multiple_days') || 'حجب الأيام المحددة')
-                                    : (t('block_this_day') || 'حجب هذا اليوم')}
-                        </h3>
-                        <p style={styles.modalDate}>
-                            {dayModal.mode === 'block-multi'
-                                ? `${selectedDates.size} ${t('days_selected') || 'يوم محدد'}`
-                                : dayModal.dateStr ? formatDateDisplay(dayModal.dateStr) : ''}
-                        </p>
-
-                        <label style={styles.modalLabel}>{t('units_to_block') || 'عدد الوحدات'}</label>
-                        <div style={styles.stepper}>
-                            <button type="button" onClick={() => stepModalUnits(-1)} style={styles.stepperBtn} aria-label="decrease">−</button>
-                            <input
-                                type="text"
-                                inputMode="numeric"
-                                autoFocus
-                                value={dayModal.count}
-                                onChange={handleModalUnitsChange}
-                                onBlur={handleModalUnitsBlur}
-                                style={styles.stepperInput}
-                            />
-                            <button type="button" onClick={() => stepModalUnits(1)} style={styles.stepperBtn} aria-label="increase">+</button>
-                        </div>
-                        {dayModal.mode === 'block-multi' && (
-                            <p style={{ fontSize: '12px', color: '#6b7280', margin: '-12px 0 20px 0' }}>
-                                {t('units_apply_to_all_selected') || 'سيتم تطبيق هذا العدد على كل الأيام المحددة.'}
+                ) : (
+                    <>
+                        <div style={styles.multiToggleRow} className="cv-multi-toggle-row">
+                            <p style={{ ...styles.hintBanner, margin: 0, flex: 1 }}>
+                                💡 {multiSelectMode
+                                ? (t('multi_select_hint')
+                                    || 'اضغط على أي عدد من الأيام (متاحة أو محجوبة) لتحديدها، ثم اختر الإجراء المناسب من الشريط أدناه.')
+                                : (t('click_to_block_unblock')
+                                    || 'اضغط على أي يوم متاح لاختيار عدد الوحدات وحجبه. اضغط على يوم محجوب (برتقالي) لتعديل عدد وحداته أو إلغاء الحجب — كل يوم بعدده الخاص.')}
                             </p>
+                            <button
+                                type="button"
+                                onClick={toggleMultiSelectMode}
+                                disabled={isProcessing}
+                                style={styles.multiToggleBtn(multiSelectMode)}
+                            >
+                                {multiSelectMode ? <IconX size={16} /> : <IconChecks size={16} />}
+                                {multiSelectMode
+                                    ? (t('exit_multi_select') || 'إلغاء التحديد المتعدد')
+                                    : (t('multi_select') || 'تحديد متعدد')}
+                            </button>
+                        </div>
+
+                        {statusMessage.text && (
+                            <div style={styles.statusMessage(statusMessage.isError)}>
+                                <span>{statusMessage.isError ? '⚠️' : '✅'}</span>
+                                {statusMessage.text}
+                            </div>
                         )}
 
-                        <div style={styles.modalActions}>
-                            {dayModal.mode === 'blocked' && (
-                                <button onClick={handleUnblockFromModal} style={styles.button('danger', isProcessing)} disabled={isProcessing}>
-                                    <IconLockOpen size={15} />
-                                    {t('unblock') || 'إلغاء الحجب'}
-                                </button>
+                        {multiSelectMode && selectedArray.length > 0 && (
+                            <div style={styles.selectionBar} className="cv-selection-bar">
+                                <span style={styles.selectionCount}>
+                                    <IconSquareCheck size={16} />
+                                    {selectedArray.length} {t('days_selected') || 'يوم محدد'}
+                                    {hasMixedSelection && (
+                                        <span style={{ color: '#fca5a5', fontWeight: 500 }}>
+                                            — {t('mixed_selection_hint') || 'اختر أيام من نفس النوع (متاحة أو محجوبة) لتنفيذ إجراء جماعي'}
+                                        </span>
+                                    )}
+                                </span>
+                                <div style={styles.selectionActions} className="cv-selection-actions">
+                                    {canBulkBlock && (
+                                        <button
+                                            type="button"
+                                            onClick={openMultiBlockModal}
+                                            disabled={isProcessing}
+                                            style={styles.pillBtn('block', isProcessing)}
+                                        >
+                                            <IconLock size={14} />
+                                            {t('block_n_days', { count: selectedArray.length }) || `حجب ${selectedArray.length} أيام`}
+                                        </button>
+                                    )}
+                                    {canBulkUnblock && (
+                                        <button
+                                            type="button"
+                                            onClick={handleBulkUnblock}
+                                            disabled={isProcessing}
+                                            style={styles.pillBtn('unblock', isProcessing)}
+                                        >
+                                            <IconLockOpen size={14} />
+                                            {isProcessing
+                                                ? (t('processing') || '...جارٍ الحفظ')
+                                                : (t('unblock_n_days', { count: selectedArray.length }) || `إلغاء حجب ${selectedArray.length} أيام`)}
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={clearSelection}
+                                        disabled={isProcessing}
+                                        style={styles.pillBtn('clear', isProcessing)}
+                                    >
+                                        <IconX size={14} />
+                                        {t('clear_selection') || 'مسح التحديد'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div style={styles.calendarWrapper} className="cv-wrapper">
+                            <div style={styles.calendarSection}>
+                                <div style={styles.calendarNav}>
+                                    <h2 style={styles.monthTitle} className="cv-month-title">{monthName}</h2>
+                                    <div style={styles.navButtons}>
+                                        {isRTL ? (
+                                            <>
+                                                <button onClick={nextMonth} style={styles.navButton} title={t('next_month')}>
+                                                    <IconChevronLeft size={17} />
+                                                </button>
+                                                <button onClick={goToToday} style={styles.navButton}>{t('today')}</button>
+                                                <button onClick={prevMonth} style={styles.navButton} title={t('prev_month')}>
+                                                    <IconChevronRight size={17} />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button onClick={prevMonth} style={styles.navButton} title={t('prev_month')}>
+                                                    <IconChevronLeft size={17} />
+                                                </button>
+                                                <button onClick={goToToday} style={styles.navButton}>{t('today')}</button>
+                                                <button onClick={nextMonth} style={styles.navButton} title={t('next_month')}>
+                                                    <IconChevronRight size={17} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div style={styles.calendarGrid}>
+                                    {dayNames.map(day => (
+                                        <div key={day} style={styles.dayHead}>{day}</div>
+                                    ))}
+
+                                    {calendarDays.map((day, idx) => {
+                                        if (!day) return <div key={`empty-${idx}`} />;
+
+                                        const dateStr = formatDate(day);
+                                        const booked = isDateBooked(dateStr);
+                                        const blocked = isDateBlocked(dateStr);
+                                        const past = isPastDate(dateStr);
+                                        const unitsForDay = blocked ? getBlockedUnitsForDate(dateStr) : 0;
+                                        const isSelected = multiSelectMode && selectedDates.has(dateStr);
+
+                                        let bg = '#f9fafb', color = '#374151', border = '1.5px solid #f3f4f6', cursor = 'pointer', opacity = 1;
+
+                                        if (booked) {
+                                            bg = '#fee2e2'; color = '#991b1b'; border = '1.5px solid #fca5a5'; cursor = 'not-allowed';
+                                        } else if (blocked) {
+                                            bg = '#ffedd5'; color = '#92400e'; border = '1.5px solid #fdba74';
+                                            cursor = isProcessing ? 'not-allowed' : 'pointer';
+                                            opacity = isProcessing ? 0.6 : 1;
+                                        } else if (past) {
+                                            bg = '#f3f4f6'; color = '#d1d5db'; cursor = 'not-allowed'; opacity = 0.5;
+                                        } else {
+                                            cursor = isProcessing ? 'not-allowed' : 'pointer';
+                                            opacity = isProcessing ? 0.6 : 1;
+                                        }
+
+                                        const cellStyle = {
+                                            ...styles.dayCell(bg, color, border, cursor, opacity),
+                                            ...(isSelected ? {
+                                                boxShadow: '0 0 0 2px #185FA5',
+                                                border: '1.5px solid #185FA5',
+                                            } : {}),
+                                        };
+
+                                        const handleDateClick = () => {
+                                            if (isProcessing) return;
+                                            if (booked) {
+                                                setStatusMessage({ text: t('cannot_change_booked_date') || 'هذا اليوم محجوز من عميل ولا يمكن تعديله', isError: true });
+                                                return;
+                                            }
+                                            if (past) {
+                                                setStatusMessage({ text: t('cannot_block_past_date') || 'لا يمكن حجب تاريخ سابق', isError: true });
+                                                return;
+                                            }
+                                            if (multiSelectMode) {
+                                                toggleDateSelection(dateStr);
+                                                return;
+                                            }
+                                            if (blocked) {
+                                                openEditModal(dateStr);
+                                            } else {
+                                                openBlockModal(dateStr);
+                                            }
+                                        };
+
+                                        return (
+                                            <div
+                                                key={day}
+                                                style={cellStyle}
+                                                className="cv-day-cell"
+                                                onClick={handleDateClick}
+                                                title={
+                                                    past ? (t('past_date') || 'تاريخ سابق')
+                                                        : booked ? (t('booked_date') || 'محجوز')
+                                                            : blocked ? `${t('click_to_edit') || 'اضغط للتعديل'} (${unitsForDay})`
+                                                                : (t('click_to_block') || 'اضغط للحجب')
+                                                }
+                                            >
+                                                {isSelected && (
+                                                    <span style={styles.selectedCheckBadge}>
+                                                        <IconSquareCheck size={11} />
+                                                    </span>
+                                                )}
+                                                {blocked && <span style={styles.unitsBadge}>{unitsForDay}</span>}
+                                                <span>{day}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div style={styles.sidebar}>
+                                <div style={styles.sidebarCard}>
+                                    <h3 style={styles.cardTitle}>📋 {t('legend')}</h3>
+                                    <div style={styles.legend}>
+                                        <div style={styles.legendItem}>
+                                            <div style={styles.legendColor('#f9fafb')} />
+                                            <span>{t('available') || 'متاح'}</span>
+                                        </div>
+                                        <div style={styles.legendItem}>
+                                            <div style={styles.legendColor('#ffedd5')} />
+                                            <span>{t('blocked') || 'محجوب (الرقم = عدد وحداته)'}</span>
+                                        </div>
+                                        <div style={styles.legendItem}>
+                                            <div style={styles.legendColor('#fee2e2')} />
+                                            <span>{t('booked') || 'محجوز من عميل'}</span>
+                                        </div>
+                                        <div style={styles.legendItem}>
+                                            <div style={styles.legendColor('#f3f4f6', { opacity: 0.5 })} />
+                                            <span style={{ color: '#9ca3af' }}>{t('past_dates') || 'تاريخ سابق'}</span>
+                                        </div>
+                                        {multiSelectMode && (
+                                            <div style={styles.legendItem}>
+                                                <div style={{ ...styles.legendColor('#f9fafb'), boxShadow: '0 0 0 2px #185FA5' }} />
+                                                <span>{t('selected') || 'محدد'}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div style={styles.sidebarCard}>
+                                    <h3 style={styles.cardTitle}>🔒 {t('blocked_days')} ({sortedBlockedDays.length})</h3>
+                                    {sortedBlockedDays.length === 0 ? (
+                                        <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>
+                                            {t('no_blocked_days') || 'لا يوجد أيام محجوبة'}
+                                        </p>
+                                    ) : (
+                                        <div style={styles.blockedList}>
+                                            {sortedBlockedDays.map(({ date, unitsCount }) => (
+                                                <div
+                                                    key={date}
+                                                    style={{
+                                                        ...styles.blockedRow,
+                                                        ...(multiSelectMode && selectedDates.has(date) ? { boxShadow: '0 0 0 2px #185FA5' } : {}),
+                                                    }}
+                                                    onClick={() => multiSelectMode ? toggleDateSelection(date) : openEditModal(date)}
+                                                >
+                                                    <span>{formatDateDisplay(date)}</span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <strong>{unitsCount} {t('units') || 'وحدة'}</strong>
+                                                        {!multiSelectMode && (
+                                                            <button
+                                                                style={styles.blockedRowBtn}
+                                                                onClick={(e) => { e.stopPropagation(); openEditModal(date); }}
+                                                                title={t('edit') || 'تعديل'}
+                                                            >
+                                                                <IconPencil size={13} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {selectedFlat && (
+                                    <div style={styles.sidebarCard}>
+                                        <h3 style={styles.cardTitle}>🏠 {t('flat_info')}</h3>
+                                        <div style={{ fontSize: '13px', color: '#4b5563', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <div style={{ fontWeight: 700, color: '#111827', fontSize: '14px' }}>
+                                                {selectedFlat.nameEn || selectedFlat.nameAr}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                <span style={{ padding: '3px 8px', background: '#f0fdf4', color: '#16a34a', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: '1px solid #bbf7d0' }}>
+                                                    💰{t('OMR')}{selectedFlat.price_per_night}
+                                                </span>
+                                                <span style={{ padding: '3px 8px', background: '#eff6ff', color: '#1d4ed8', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: '1px solid #bfdbfe' }}>
+                                                    👥 {selectedFlat.visitors_count || 0} {t('guests')}
+                                                </span>
+                                                <span style={{ padding: '3px 8px', background: '#faf5ff', color: '#7c3aed', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: '1px solid #e9d5ff' }}>
+                                                    🛏️ {selectedFlat.bedsNumber || 0} {t('beds')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {dayModal.open && (
+                    <div style={styles.modalOverlay} onClick={closeModal}>
+                        <div style={styles.modalBox} className="cv-modal-box" onClick={(e) => e.stopPropagation()}>
+                            <h3 style={styles.modalTitle}>
+                                {dayModal.mode === 'blocked'
+                                    ? (t('edit_blocked_day') || 'تعديل يوم محجوب')
+                                    : dayModal.mode === 'block-multi'
+                                        ? (t('block_multiple_days') || 'حجب الأيام المحددة')
+                                        : (t('block_this_day') || 'حجب هذا اليوم')}
+                            </h3>
+                            <p style={styles.modalDate}>
+                                {dayModal.mode === 'block-multi'
+                                    ? `${selectedDates.size} ${t('days_selected') || 'يوم محدد'}`
+                                    : dayModal.dateStr ? formatDateDisplay(dayModal.dateStr) : ''}
+                            </p>
+
+                            <label style={styles.modalLabel}>{t('units_to_block') || 'عدد الوحدات'}</label>
+                            <div style={styles.stepper}>
+                                <button type="button" onClick={() => stepModalUnits(-1)} style={styles.stepperBtn} aria-label="decrease">−</button>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    autoFocus
+                                    value={dayModal.count}
+                                    onChange={handleModalUnitsChange}
+                                    onBlur={handleModalUnitsBlur}
+                                    style={styles.stepperInput}
+                                />
+                                <button type="button" onClick={() => stepModalUnits(1)} style={styles.stepperBtn} aria-label="increase">+</button>
+                            </div>
+                            {dayModal.mode === 'block-multi' && (
+                                <p style={{ fontSize: '12px', color: '#6b7280', margin: '-12px 0 20px 0' }}>
+                                    {t('units_apply_to_all_selected') || 'سيتم تطبيق هذا العدد على كل الأيام المحددة.'}
+                                </p>
                             )}
-                            <button onClick={closeModal} style={styles.button('secondary', isProcessing)} disabled={isProcessing}>
-                                {t('cancel') || 'إلغاء'}
-                            </button>
-                            <button onClick={confirmModal} style={styles.button('primary', isProcessing)} disabled={isProcessing}>
-                                <IconLock size={15} />
-                                {isProcessing
-                                    ? (t('processing') || '...جارٍ الحفظ')
-                                    : dayModal.mode === 'blocked'
-                                        ? (t('update') || 'تحديث')
-                                        : dayModal.mode === 'block-multi'
-                                            ? (t('block_selected') || `حجب ${selectedDates.size} أيام`)
-                                            : (t('block') || 'حجب')}
-                            </button>
+
+                            <div style={styles.modalActions} className="cv-modal-actions">
+                                {dayModal.mode === 'blocked' && (
+                                    <button onClick={handleUnblockFromModal} style={styles.button('danger', isProcessing)} disabled={isProcessing}>
+                                        <IconLockOpen size={15} />
+                                        {t('unblock') || 'إلغاء الحجب'}
+                                    </button>
+                                )}
+                                <button onClick={closeModal} style={styles.button('secondary', isProcessing)} disabled={isProcessing}>
+                                    {t('cancel') || 'إلغاء'}
+                                </button>
+                                <button onClick={confirmModal} style={styles.button('primary', isProcessing)} disabled={isProcessing}>
+                                    <IconLock size={15} />
+                                    {isProcessing
+                                        ? (t('processing') || '...جارٍ الحفظ')
+                                        : dayModal.mode === 'blocked'
+                                            ? (t('update') || 'تحديث')
+                                            : dayModal.mode === 'block-multi'
+                                                ? (t('block_selected') || `حجب ${selectedDates.size} أيام`)
+                                                : (t('block') || 'حجب')}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )}
+            </div>
+        </>
     );
 }
 // import React, { useState, useEffect } from 'react';

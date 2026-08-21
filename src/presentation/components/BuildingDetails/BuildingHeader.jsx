@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
+import { getAmenityMeta, localizeGovernorate, localizeWilayat } from '../../../core/utils/Constants/building_constants.js';
+import AmenityChip from '../AmenityChip.jsx';
 import '../../styles/Buildingdetails.css';
 
 /**
  * BuildingHeader Component
- * Displays building hero banner with cover image, name, and key information
+ * Hero banner for a building's detail view: cover photo with a gradient
+ * scrim (badges/title/address overlaid), followed by a light stats/amenities
+ * panel — replaces the old fully-darkened photo + plain badge treatment.
  */
 const BuildingHeader = ({ building, lang, t, onEditClick, onImageError }) => {
     const [imageLoadError, setImageLoadError] = useState(false);
@@ -12,7 +16,11 @@ const BuildingHeader = ({ building, lang, t, onEditClick, onImageError }) => {
     const coverImg = building.coverImg;
     const isActive = building.isActive;
     const name = lang === 'ar' ? building.nameAr || building.nameEn : building.nameEn || building.nameAr;
-    const address = building.address;
+    // building.address is a precomposed "wilayat, governorate" string in raw
+    // English — rebuild it from the separate fields so it localizes properly.
+    const address = [localizeWilayat(building.wilayat, lang), localizeGovernorate(building.governorate, lang)]
+        .filter(Boolean)
+        .join(', ') || building.address;
 
     const handleImageError = (e) => {
         setImageLoadError(true);
@@ -26,103 +34,121 @@ const BuildingHeader = ({ building, lang, t, onEditClick, onImageError }) => {
         return `${url}${separator}t=${Date.now()}`;
     };
 
-    const imageSrc = coverImg ? getCacheBustedUrl(coverImg) : null;
-
     return (
-        <div className="building-header">
-            {/* Background Image or Gradient */}
-            {coverImg && !imageLoadError ? (
-                <div className="building-header__background">
-                    <img
-                        key={coverImg}
-                        src={coverImg}
-                        alt="building-cover"
-                        loading="eager" // Use eager instead of lazy for hero images
-                        style={{
-                            position: 'absolute',
-                            inset: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                        }}
-                        onError={handleImageError}
-                    />
-                </div>
-            ) : (
-                <div className="building-header__background building-header__gradient" />
-            )}
+        <div style={{ '--ph-accent': '#185FA5', '--ph-accent-light': '#e6f1fb' }}>
+            <div className="ph-hero">
+                {coverImg && !imageLoadError ? (
+                    <div className="ph-hero__media">
+                        <img
+                            key={coverImg}
+                            src={getCacheBustedUrl(coverImg)}
+                            alt="building-cover"
+                            loading="eager"
+                            onError={handleImageError}
+                        />
+                    </div>
+                ) : (
+                    <div className="ph-hero__media ph-hero__media--gradient" />
+                )}
+                <div className="ph-hero__scrim" />
 
-            {/* Content */}
-            <div className="building-header__content">
-                {/* Badges */}
-                <div className="building-header__badges">
-                    <span className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`}>
-                        {isActive ? t('operational') || 'Active' : t('inactive') || 'Inactive'}
-                    </span>
-
-                    {raw.isExclusive && (
-                        <span className="badge badge-info">
-                            <i className="fa-solid fa-star" style={{ marginInlineEnd: '4px' }} />
-                            {t('exclusive') || 'Exclusive'}
+                <div className="ph-hero__top">
+                    <div className="ph-hero__badges">
+                        <span className={`ph-badge ${isActive ? 'ph-badge--active' : 'ph-badge--inactive'}`}>
+                            <i className={`fa-solid ${isActive ? 'fa-circle-check' : 'fa-circle-xmark'}`} />
+                            {isActive ? t('operational') || 'Active' : t('inactive') || 'Inactive'}
                         </span>
-                    )}
 
-                    {raw.stopBook && <span className="badge badge-danger">{t('booking_stopped') || 'Booking Stopped'}</span>}
+                        {raw.isExclusive && (
+                            <span className="ph-badge ph-badge--info">
+                                <i className="fa-solid fa-star" style={{ color: '#d97706' }} />
+                                {t('exclusive') || 'Exclusive'}
+                            </span>
+                        )}
+
+                        {raw.stopBook && (
+                            <span className="ph-badge ph-badge--inactive">
+                                {t('booking_stopped') || 'Booking Stopped'}
+                            </span>
+                        )}
+                    </div>
                 </div>
 
-                {/* Title */}
-                <h1 className="building-header__title">{name}</h1>
+                <div className="ph-hero__bottom">
+                    <h1 className="ph-title">{name}</h1>
+                    <p className="ph-subtitle">
+                        <i className="fa-solid fa-location-dot" />
+                        {address}
+                        {raw.location && ` — ${raw.location}`}
+                    </p>
+                </div>
+            </div>
 
-                {/* Subtitle */}
-                <p className="building-header__subtitle">
-                    <i className="fa-solid fa-location-dot" style={{ marginInlineEnd: '6px' }} />
-                    {address}
-                    {raw.location && ` — ${raw.location}`}
-                </p>
+            <div className="ph-panel">
+                {/* Stats */}
+                <div className="ph-stats">
+                    <div className="ph-stat">
+                        <span className="ph-stat__icon"><i className="fa-solid fa-layer-group" /></span>
+                        <span className="ph-stat__text">
+                            <span className="ph-stat__value">{building.floors}</span>
+                            <span className="ph-stat__label">{t('total_floors') || 'Floors'}</span>
+                        </span>
+                    </div>
 
-                {/* Meta Stats */}
-                <div className="building-header__meta">
-                    <span className="meta-stat-item">
-                        <i className="fa-solid fa-layer-group" style={{ marginInlineEnd: '6px' }} />
-                        <strong>{building.floors}</strong> {t('total_floors') || 'Floors'}
-                    </span>
-
-                    <span className="meta-stat-item">
-                        <i className="fa-solid fa-door-closed" style={{ marginInlineEnd: '6px' }} />
-                        <strong>{building.flats}</strong> {t('total_flats') || 'Flats'}
-                    </span>
+                    <div className="ph-stat">
+                        <span className="ph-stat__icon"><i className="fa-solid fa-door-closed" /></span>
+                        <span className="ph-stat__text">
+                            <span className="ph-stat__value">{building.flats}</span>
+                            <span className="ph-stat__label">{t('total_flats') || 'Flats'}</span>
+                        </span>
+                    </div>
 
                     {raw.minimumRent && (
-                        <span className="meta-stat-item">
-                            <i className="fa-solid fa-money-bill" style={{ marginInlineEnd: '6px' }} />
-                           {t('OMR')}{raw.minimumRent} – {raw.maxRent}
-                        </span>
+                        <div className="ph-stat">
+                            <span className="ph-stat__icon"><i className="fa-solid fa-money-bill" /></span>
+                            <span className="ph-stat__text">
+                                <span className="ph-stat__value">{t('OMR')} {raw.minimumRent}–{raw.maxRent}</span>
+                                <span className="ph-stat__label">{t('price_range') || 'Price range'}</span>
+                            </span>
+                        </div>
                     )}
 
                     {raw.minDays && (
-                        <span className="meta-stat-item">
-                            <i className="fa-solid fa-calendar-days" style={{ marginInlineEnd: '6px' }} />
-                            {t('min_days') || 'Min'} {raw.minDays} {t('days') || 'days'}
-                        </span>
+                        <div className="ph-stat">
+                            <span className="ph-stat__icon"><i className="fa-solid fa-calendar-days" /></span>
+                            <span className="ph-stat__text">
+                                <span className="ph-stat__value">{raw.minDays} {t('days') || 'days'}</span>
+                                <span className="ph-stat__label">{t('min_days') || 'Min stay'}</span>
+                            </span>
+                        </div>
                     )}
                 </div>
 
                 {/* Services */}
                 {building.services?.length > 0 && (
-                    <div className="building-header__services">
-                        {building.services.map((service, index) => (
-                            <span key={`service-${index}-${service}`} className="badge badge-info">
-                                <i className="fa-solid fa-check" style={{ marginInlineEnd: '6px' }} />
-                                {t(`service_${service.toLowerCase()}`) || service}
-                            </span>
-                        ))}
-                    </div>
+                    <>
+                        <div className="ph-divider" />
+                        <div className="ph-services">
+                            {building.services.map((service, index) => {
+                                const meta = getAmenityMeta(service);
+                                return (
+                                    <AmenityChip
+                                        key={`service-${index}-${service}`}
+                                        Icon={meta?.Icon}
+                                        bg={meta?.bg || 'var(--ph-accent-light)'}
+                                        color={meta?.color || 'var(--ph-accent)'}
+                                        label={meta ? (t(`service_${meta.key}`) || service) : service}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </>
                 )}
 
                 {/* Actions */}
-                <div className="building-header__actions">
-                    <button className="btn btn-secondary" onClick={onEditClick}>
-                        <i className="fa-solid fa-pen" style={{ marginInlineEnd: '6px' }} />
+                <div className="ph-actions">
+                    <button className="ph-edit-btn" onClick={onEditClick}>
+                        <i className="fa-solid fa-pen" />
                         {t('edit_building') || 'Edit Building'}
                     </button>
                 </div>

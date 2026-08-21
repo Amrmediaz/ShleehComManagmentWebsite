@@ -111,20 +111,41 @@ export default function MediaSection({
                     <div
                         onClick={() => coverInputRef?.current?.click()}
                         style={{
-                            border: '1.5px dashed #d1d5db',
+                            border: coverPreview ? '1px solid #e5e7eb' : '1.5px dashed #d1d5db',
                             borderRadius: '10px',
-                            width: '200px',
-                            height: '200px',
+                            width: '100%',
+                            maxWidth: '320px',
+                            height: '190px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            backgroundImage: coverPreview ? `url(${coverPreview})` : 'none',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center'
+                            background: '#f8fafc',
+                            overflow: 'hidden',
+                            position: 'relative',
                         }}
                     >
-                        {!coverPreview && (
+                        {coverPreview ? (
+                            <>
+                                <img
+                                    src={coverPreview}
+                                    alt={t('cover_image') || 'Cover'}
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                />
+                                <span style={{
+                                    position: 'absolute',
+                                    bottom: '6px',
+                                    insetInlineEnd: '6px',
+                                    background: 'rgba(17,24,39,0.7)',
+                                    color: '#fff',
+                                    fontSize: '10px',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                }}>
+                                    {isRTL ? 'تغيير الصورة' : 'Change photo'}
+                                </span>
+                            </>
+                        ) : (
                             <span style={{
                                 fontSize: '12px',
                                 color: '#9ca3af',

@@ -3,6 +3,7 @@ import { useTranslation } from '../context/LanguageContext';
 import { useBookings } from '../hooks/useBookings';
 import { FilterBookingsUseCase } from '../../core/useCases/FilterBookingsUseCase';
 import RialSymbol from './OmaniRial.jsx';
+import { Skeleton } from './Skeleton.jsx';
 
 const filterUseCase = new FilterBookingsUseCase();
 
@@ -219,8 +220,10 @@ export default function BookingList({ flatId, flatName, autoLoad = true, onViewB
 
             {/* Loading State */}
             {isLoading && (
-                <div style={styles.loadingContainer}>
-                    <p>{t('loading') || 'Loading bookings...'}</p>
+                <div style={styles.tableWrapper}>
+                    <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} height="44px" style={{ borderRadius: '8px' }} />)}
+                    </div>
                 </div>
             )}
 

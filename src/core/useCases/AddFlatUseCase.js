@@ -1,6 +1,7 @@
 import { BuildingRepository } from '../../data/repositories/BuildingRepository';
 import { FlatEntity } from '../entities/Flat.js';
 import { validateFlatFields } from '../utils/validations/ValidationFlatFields.js';
+import { invalidateCache } from '../utils/helper/simpleCache.js';
 
 export const AddFlatUseCase = {
     /**
@@ -24,6 +25,7 @@ export const AddFlatUseCase = {
 
         // 3. Send to data layer
         const result = await BuildingRepository.addFlat(flatEntity.toApiPayload());
+        invalidateCache(`flats:${formData.hotelbuildingID}`);
 
         return { validationError: null, result };
     },

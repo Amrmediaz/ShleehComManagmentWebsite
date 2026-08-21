@@ -74,6 +74,11 @@ export default function LocationSection({
                                             t,
                                             isRTL,
                                             lang,
+                                            // Buildings store a free-text address + "near to" field; chalets don't
+                                            // have a home for them in the API, so callers that don't pass real
+                                            // state for these (i.e. AddChaletModal) should set this to false
+                                            // rather than show fields that silently go nowhere.
+                                            showAddressFields = true,
                                         }) {
     const mapRef = useRef(null);
     const mapContainer = useRef(null);
@@ -367,34 +372,38 @@ export default function LocationSection({
                     </div>
                 </div>
 
-                {/* Detailed Address */}
-                <div>
-                    <label className="modal-label">
-                        {isRTL ? 'العنوان التفصيلي' : 'Detailed Address'}
-                        <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                        className="modal-input"
-                        type="text"
-                        placeholder={isRTL ? 'الشارع، المبنى، الحي...' : 'Street, building, area…'}
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                    />
-                </div>
+                {/* Detailed Address — buildings only; chalets don't have this field in the API */}
+                {showAddressFields && (
+                    <div>
+                        <label className="modal-label">
+                            {isRTL ? 'العنوان التفصيلي' : 'Detailed Address'}
+                            <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <input
+                            className="modal-input"
+                            type="text"
+                            placeholder={isRTL ? 'الشارع، المبنى، الحي...' : 'Street, building, area…'}
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                        />
+                    </div>
+                )}
 
-                {/* Near To */}
-                <div>
-                    <label className="modal-label">
-                        {isRTL ? 'قريب من' : 'Near To'}
-                    </label>
-                    <input
-                        className="modal-input"
-                        type="text"
-                        placeholder={isRTL ? 'قريب من مول، مستشفى...' : 'Near mall, hospital…'}
-                        value={nearTo}
-                        onChange={(e) => setNearTo(e.target.value)}
-                    />
-                </div>
+                {/* Near To — buildings only; chalets don't have this field in the API */}
+                {showAddressFields && (
+                    <div>
+                        <label className="modal-label">
+                            {isRTL ? 'قريب من' : 'Near To'}
+                        </label>
+                        <input
+                            className="modal-input"
+                            type="text"
+                            placeholder={isRTL ? 'قريب من مول، مستشفى...' : 'Near mall, hospital…'}
+                            value={nearTo}
+                            onChange={(e) => setNearTo(e.target.value)}
+                        />
+                    </div>
+                )}
 
                 {/* Map Toggle */}
                 <div>

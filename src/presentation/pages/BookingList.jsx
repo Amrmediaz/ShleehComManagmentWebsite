@@ -3,7 +3,17 @@ import { useTranslation } from '../context/LanguageContext';
 import { GetOwnerBuildingsFlatUseCase } from '../../core/useCases/GetBuildingsFlatUseCase.js';
 import { GetBookingDetailsUseCase } from '../../core/useCases/GetBookingDetailsUseCase.js';
 import BookingList from '../components/BookingList.jsx';
+import ChaletBookingsTab from '../components/Chalets/ChaletBookingsTab.jsx';
+import { Skeleton } from '../components/Skeleton.jsx';
 import '../styles/Buildingdetails.css'; // ✅ CORRECT - Separate CSS file
+
+const switchBtnStyle = (active, warm) => ({
+    display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '10px',
+    fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+    border: active ? `1.5px solid ${warm ? '#c2680f' : '#185FA5'}` : '1px solid #d1d5db',
+    background: active ? (warm ? '#fdf0e2' : '#e6f1fb') : '#fff',
+    color: active ? (warm ? '#9c5209' : '#185FA5') : '#374151',
+});
 
 /**
  * BookingListPage
@@ -28,6 +38,9 @@ import '../styles/Buildingdetails.css'; // ✅ CORRECT - Separate CSS file
 export default function BookingListPage({ building }) {
     const { t, lang } = useTranslation();
     const isRTL = lang === 'ar';
+
+    // ──── VIEW TYPE (Buildings vs Chalets) ────
+    const [viewType, setViewType] = useState('buildings');
 
     // ──── STATE ────
     const [flats, setFlats] = useState([]);
@@ -110,21 +123,6 @@ export default function BookingListPage({ building }) {
     };
 
     // ──── RENDER ────
-    if (!building) {
-        return (
-            <div className="booking-list-page">
-                <div className="booking-list-page__header">
-                    <h1 className="booking-list-page__title">📋 {t('booking_list')}</h1>
-                    <p className="booking-list-page__subtitle">{t('view_all_bookings')}</p>
-                </div>
-                <div className="booking-list-page__empty-state">
-                    <div className="booking-list-page__empty-icon">🏢</div>
-                    <p>{t('select_building')}</p>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className={`booking-list-page ${isRTL ? 'booking-list-page--rtl' : ''}`}>
 
@@ -133,6 +131,26 @@ export default function BookingListPage({ building }) {
                 <h1 className="booking-list-page__title">📋 {t('booking_list')}</h1>
                 <p className="booking-list-page__subtitle">{t('view_all_bookings')}</p>
             </div>
+
+            {/* ──── BUILDINGS / CHALETS SWITCH ──── */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+                <button type="button" onClick={() => setViewType('buildings')} style={switchBtnStyle(viewType === 'buildings', false)}>
+                    <i className="fa-solid fa-city" /> {t('nav_buildings') || 'Buildings'}
+                </button>
+                <button type="button" onClick={() => setViewType('chalets')} style={switchBtnStyle(viewType === 'chalets', true)}>
+                    <i className="fa-solid fa-house-chimney" /> {t('nav_chalets') || 'Chalets'}
+                </button>
+            </div>
+
+            {viewType === 'chalets' ? (
+                <ChaletBookingsTab t={t} />
+            ) : !building ? (
+                <div className="booking-list-page__empty-state">
+                    <div className="booking-list-page__empty-icon">🏢</div>
+                    <p>{t('select_building')}</p>
+                </div>
+            ) : (
+                <>
 
             {/* ──── BUILDING INFO ──── */}
             <div className="booking-list-page__building-info">
@@ -148,9 +166,9 @@ export default function BookingListPage({ building }) {
 
             {/* ──── LOADING ──── */}
             {loadingFlats && (
-                <div className="booking-list-page__loading">
-                    <div className="booking-list-page__spinner"></div>
-                    <p>{t('loading')}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <Skeleton width="260px" height="38px" style={{ borderRadius: '8px' }} />
+                    {[0, 1, 2, 3].map((i) => <Skeleton key={i} height="48px" style={{ borderRadius: '10px' }} />)}
                 </div>
             )}
 
@@ -313,6 +331,8 @@ export default function BookingListPage({ building }) {
                         </div>
                     </div>
                 </div>
+            )}
+                </>
             )}
         </div>
     );

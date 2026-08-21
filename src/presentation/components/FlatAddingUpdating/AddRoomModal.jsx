@@ -2,11 +2,22 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from '../../context/LanguageContext.jsx';
 import { AddFlatUseCase } from '../../../core/useCases/AddFlatUseCase';
 import { fileUploadApiClient } from '/src/data/FileUploadClient.js';
-import { IconX, IconPlus, IconTrash, IconDeviceFloppy } from '@tabler/icons-react';
+import { IconX, IconPlus, IconTrash, IconChevronLeft, IconChevronRight, IconCheck, IconInfoCircle } from '@tabler/icons-react';
 import RialSymbol from '../OmaniRial.jsx';
 
-export default function AddRoomModal({id,onSave, onClose, buildingId, buildingName }) {
-    const { t } = useTranslation();
+const STEP_KEYS = ['basics', 'details', 'electronics', 'pricing', 'media', 'review'];
+
+/**
+ * AddRoomModal
+ * A guided, step-by-step wizard for adding a new flat type — mirrors
+ * AddChaletModal / AddBuildingModal's stepper pattern so the whole app
+ * feels consistent: one section at a time, a progress indicator, short
+ * guidance per step, and validation before moving forward.
+ */
+export default function AddRoomModal({ id, onSave, onClose, buildingId, buildingName }) {
+
+    const { t, lang } = useTranslation();
+    const isRTL = lang === 'ar';
 
     const [formData, setFormData] = useState({
         nameAr:                  '',
@@ -35,13 +46,21 @@ export default function AddRoomModal({id,onSave, onClose, buildingId, buildingNa
         { id: 10, en: "penthouse", ar: "بنتهاوس" },
         { id: 11, en: "garden_apartment", ar: "شقة_أرضية_بحديقة" },
         { id: 12, en: "basement_apartment", ar: "شقة_قبو" },
-        { id: 13, en: "serviced_apartment", ar: "شقة_مفروشة_بخدمات" }
+        { id: 13, en: "serviced_apartment", ar: "شقة_مفروشة_بخدمات" },
+        { id: 14, en: "villa", ar: "فيلا" } ,
+        { id: 15, en: "Chalet", ar: "شاليه" }
+
     ];
+
+    // ===== WIZARD STATE =====
+    const [stepIndex, setStepIndex] = useState(0);
+    const [maxReached, setMaxReached] = useState(0);
+    const [stepError, setStepError] = useState('');
+
     const [selectedElectronics, setSelectedElectronics] = useState([]);
     const [coverFile,           setCoverFile]           = useState(null);
     const [coverPreview,        setCoverPreview]        = useState(null);
     const [galFiles,            setGalFiles]            = useState([]);
-
     const [isLoading,     setIsLoading]     = useState(false);
     const [statusMessage, setStatusMessage] = useState({ text: '', isError: false });
     const [errors,        setErrors]        = useState({});
@@ -65,13 +84,14 @@ export default function AddRoomModal({id,onSave, onClose, buildingId, buildingNa
             if (coverPreview) URL.revokeObjectURL(coverPreview);
             galFiles.forEach(({ preview }) => URL.revokeObjectURL(preview));
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
 
         // 1. Define your Regex patterns
-        const arabicRegex = /^[\u0600-\u06FF\s0-9\u0660-\u0669]*$/; // Allows Arabic letters, numbers, and spaces
+        const arabicRegex = /^[؀-ۿ\s0-9٠-٩]*$/; // Allows Arabic letters, numbers, and spaces
         const englishRegex = /^[a-zA-Z0-9\s.,!?-]*$/; // Allows English letters, numbers, and basic punctuation
 
         // 2. Validate based on field name
@@ -103,12 +123,14 @@ export default function AddRoomModal({id,onSave, onClose, buildingId, buildingNa
         if (coverPreview) URL.revokeObjectURL(coverPreview);
         setCoverFile(file);
         setCoverPreview(URL.createObjectURL(file));
+        setErrors(prev => ({ ...prev, cover: null }));
     };
 
     const handleGalleryChange = (e) => {
         const files = Array.from(e.target.files);
         const entries = files.map(file => ({ file, preview: URL.createObjectURL(file) }));
         setGalFiles(prev => [...prev, ...entries].slice(0, 6));
+        setErrors(prev => ({ ...prev, gallery: null }));
         e.target.value = '';
     };
 
@@ -117,80 +139,121 @@ export default function AddRoomModal({id,onSave, onClose, buildingId, buildingNa
         setGalFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    // inline field-level validation — returns error map
-    const validateLocally = () => {
+    // ===== STEP DEFINITIONS =====
+    const steps = [
+        { key: 'basics', title: t('step_basics') || 'Basics', help: t('step_flat_basics_help') || 'Name the flat type, pick its unit type and how many units you have.' },
+        { key: 'details', title: t('step_flat_details') || 'Details', help: t('step_flat_details_help') || 'Set the capacity, beds and bathrooms for this flat type.' },
+        { key: 'electronics', title: t('apartment_electronics') || 'Electronics', help: t('step_flat_electronics_help') || 'Select the electronics available inside the flat. Pick at least one.' },
+        { key: 'pricing', title: t('step_pricing') || 'Pricing', help: t('step_flat_pricing_help') || 'Set your nightly rates. Base and weekend rates are required.' },
+        { key: 'media', title: t('media') || 'Media', help: t('step_flat_media_help') || 'Add a cover photo and gallery images so guests can see the flat.' },
+        { key: 'review', title: t('step_review') || 'Review', help: t('step_review_help') || 'Double-check everything below, then submit.' },
+    ];
+    const totalSteps = steps.length;
+    const current = steps[stepIndex];
+
+    // inline field-level validation for the current step — returns an error map
+    const validateStep = (index) => {
+        const key = STEP_KEYS[index];
         const e = {};
-        if (!formData.nameAr.trim())               e.nameAr               = t('error_name_ar_required')   || 'Arabic name is required';
-        if (!formData.nameEn.trim())               e.nameEn               = t('error_name_en_required')   || 'English name is required';
-        if (!formData.count || Number(formData.count) < 1)
-            e.count                = t('error_count_required')     || 'Total count is required';
-        if (!formData.beds_number || Number(formData.beds_number) < 1)
-            e.beds_number                = t('error_beds_required')     || '';
-        if (!formData.visitors_count || Number(formData.visitors_count) < 1)
-            e.visitors_count                = t('error_visitors_required')     || '';
-        if (!formData.tolits_number || Number(formData.tolits_number) < 1)
-            e.tolits_number                = t('error_bathrooms_required')     || '';
-
-        if (!formData.unit_breakdown_id)           e.unit_breakdown_id    = t('error_unit_type_required') || 'Unit type is required';
-        if (!formData.price_per_night || Number(formData.price_per_night) < 0)
-            e.price_per_night      = t('error_base_rate_required') || 'Base rate is required';
-        if (!formData.weekend_price_per_night || Number(formData.weekend_price_per_night) < 0)
-            e.weekend_price_per_night = t('error_weekend_rate_required') || 'Weekend rate is required';
-
-        if(selectedElectronics.length === 0) {
-            e.electronic_devices = t('error_electronic_devices_required') || '';
+        if (key === 'basics') {
+            if (!formData.nameAr.trim())         e.nameAr             = t('error_name_ar_required')   || 'Arabic name is required';
+            if (!formData.nameEn.trim())         e.nameEn             = t('error_name_en_required')   || 'English name is required';
+            if (!formData.unit_breakdown_id)     e.unit_breakdown_id  = t('error_unit_type_required') || 'Unit type is required';
+            if (!formData.count || Number(formData.count) < 1)
+                e.count = t('error_count_required') || 'Total count is required';
+        }
+        if (key === 'details') {
+            if (!formData.visitors_count || Number(formData.visitors_count) < 1)
+                e.visitors_count = t('error_visitors_required') || 'Capacity is required';
+            if (!formData.beds_number || Number(formData.beds_number) < 1)
+                e.beds_number = t('error_beds_required') || 'Number of beds is required';
+            if (!formData.tolits_number || Number(formData.tolits_number) < 1)
+                e.tolits_number = t('error_bathrooms_required') || 'Number of bathrooms is required';
+        }
+        if (key === 'electronics') {
+            if (selectedElectronics.length === 0)
+                e.electronic_devices = t('error_electronic_devices_required') || 'At least one electronic device is required';
+        }
+        if (key === 'pricing') {
+            if (!formData.price_per_night || Number(formData.price_per_night) < 0)
+                e.price_per_night = t('error_base_rate_required') || 'Base rate is required';
+            if (!formData.weekend_price_per_night || Number(formData.weekend_price_per_night) < 0)
+                e.weekend_price_per_night = t('error_weekend_rate_required') || 'Weekend rate is required';
+        }
+        if (key === 'media') {
+            if (!coverFile) e.cover = t('error_cover_required') || 'Cover image is required.';
+            if (galFiles.length === 0) e.gallery = t('error_images_required') || 'Gallery images are required.';
         }
         return e;
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setStatusMessage({ text: '', isError: false });
+    const goToStep = (index) => {
+        if (index < 0 || index >= totalSteps) return;
+        if (index > maxReached) return; // can't skip ahead past unvisited steps
+        setStepError('');
+        setStepIndex(index);
+    };
 
-        // 1. Local inline validation first
-        const fieldErrors = validateLocally();
-        if (Object.keys(fieldErrors).length > 0) {
-            setErrors(fieldErrors);
+    const goNext = () => {
+        const stepErrors = validateStep(stepIndex);
+        if (Object.keys(stepErrors).length > 0) {
+            setErrors(prev => ({ ...prev, ...stepErrors }));
+            setStepError(Object.values(stepErrors)[0]);
             return;
         }
+        setStepError('');
+        const next = Math.min(stepIndex + 1, totalSteps - 1);
+        setStepIndex(next);
+        setMaxReached(prev => Math.max(prev, next));
+    };
+
+    const goBack = () => {
+        setStepError('');
+        setStepIndex(prev => Math.max(prev - 1, 0));
+    };
+
+    const handleSubmit = async () => {
+        // Re-validate every step once more before actually submitting.
+        for (let i = 0; i < totalSteps - 1; i++) {
+            const stepErrors = validateStep(i);
+            if (Object.keys(stepErrors).length > 0) {
+                setStepIndex(i);
+                setMaxReached(prev => Math.max(prev, i));
+                setErrors(prev => ({ ...prev, ...stepErrors }));
+                setStepError(Object.values(stepErrors)[0]);
+                return;
+            }
+        }
+
         setErrors({});
+        setStepError('');
+        setStatusMessage({ text: '', isError: false });
         setIsLoading(true);
 
         try {
-            // 2. Upload cover
+            // 1. Upload cover
             let coverimg = '';
-            if (coverFile) {
-                const res = JSON.parse(await fileUploadApiClient.uploadFile(coverFile));
-                if (res?.status) {
-                    coverimg = 'https://shleeh.com/' + res.message.replace(/^\//, '');
-                } else {
-                    console.error('[AddRoomModal] Cover upload failed');
-                }
+            const res = JSON.parse(await fileUploadApiClient.uploadFile(coverFile));
+            if (res?.status) {
+                coverimg = 'https://shleeh.com/' + res.message.replace(/^\//, '');
             } else {
-                setStatusMessage({ text: t('error_cover_required') || 'Server error, please try again.', isError: true });
-                return
+                console.error('[AddRoomModal] Cover upload failed');
             }
 
-            // 3. Upload gallery
+            // 2. Upload gallery
             const flatImages = [];
-            if (galFiles.length === 0) {
-
-                setStatusMessage({ text: t('error_images_required') || 'Server error, please try again.', isError: true });
-                return
-            }
             for (const { file } of galFiles) {
                 try {
-                    const res = JSON.parse(await fileUploadApiClient.uploadFile(file));
-                    if (res?.status) {
-                        flatImages.push({ id: 0, path: 'https://shleeh.com/' + res.message.replace(/^\//, ''), flatId: 0 });
+                    const galRes = JSON.parse(await fileUploadApiClient.uploadFile(file));
+                    if (galRes?.status) {
+                        flatImages.push({ id: 0, path: 'https://shleeh.com/' + galRes.message.replace(/^\//, ''), flatId: 0 });
                     }
                 } catch (err) {
                     console.error('[AddRoomModal] Gallery upload error:', err);
                 }
             }
 
-            // 4. Build payload — keys match FlatEntity constructor exactly
-
+            // 3. Build payload — keys match FlatEntity constructor exactly
             const payload = {
                 hotelbuildingID:         id || 0,
                 nameAr:                  formData.nameAr.trim(),
@@ -209,12 +272,11 @@ export default function AddRoomModal({id,onSave, onClose, buildingId, buildingNa
                 coverimg,
                 flatImages,
                 electronic_devices: selectedElectronics.map(eleId => {
-                    // Find the object from your constant list using the ID
                     const option = electronicsOptions.find(opt => opt.id === eleId);
                     return {
-                        id:0, // Or 0, depending on your DB
+                        id:0,
                         serviceName: option ? option.label : "Unknown",
-                        flatId: 0 // Mirroring your successful flatImages structure
+                        flatId: 0
                     };
                 }),
                 isActive:                true,
@@ -222,13 +284,13 @@ export default function AddRoomModal({id,onSave, onClose, buildingId, buildingNa
                 stopBook:                false,
                 showComments:            true,
             };
-            console.log(payload);
 
-            // 5. Use case: validate → FlatEntity → API
-            const { validationError, result } = await AddFlatUseCase.execute(payload,t);
+            // 4. Use case: validate → FlatEntity → API
+            const { validationError, result } = await AddFlatUseCase.execute(payload, t);
 
             if (validationError) {
                 setStatusMessage({ text: t(validationError) || validationError, isError: true });
+                setIsLoading(false);
                 return;
             }
 
@@ -240,11 +302,13 @@ export default function AddRoomModal({id,onSave, onClose, buildingId, buildingNa
                 setTimeout(() => onClose(), 1400);
             } else {
                 setStatusMessage({ text: result?.message || t('flat_add_failed') || 'Failed to add flat.', isError: true });
+                setIsLoading(false);
             }
 
         } catch (err) {
             console.error('[AddRoomModal] Unexpected error:', err);
             setStatusMessage({ text: t('server_error') || 'Server error, please try again.', isError: true });
+            setIsLoading(false);
         } finally {
             setIsLoading(false);
         }
@@ -272,12 +336,15 @@ export default function AddRoomModal({id,onSave, onClose, buildingId, buildingNa
         pointerEvents: 'none',
     };
 
+    const arrowBack = isRTL ? <IconChevronRight size={16} /> : <IconChevronLeft size={16} />;
+    const arrowNext = isRTL ? <IconChevronLeft size={16} /> : <IconChevronRight size={16} />;
+
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '12px', boxSizing: 'border-box' }}>
-            <div style={{ background: 'white', borderRadius: '16px', maxWidth: '640px', width: '100%', maxHeight: 'calc(100vh - 24px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div style={{ background: 'white', borderRadius: '16px', maxWidth: '640px', width: '100%', maxHeight: 'calc(100vh - 24px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', direction: isRTL ? 'rtl' : 'ltr' }}>
 
                 {/* Header */}
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                     <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#111827' }}>
                         {t('add_flat_type')}
                     </h2>
@@ -286,248 +353,380 @@ export default function AddRoomModal({id,onSave, onClose, buildingId, buildingNa
                     </button>
                 </div>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1, boxSizing: 'border-box' }}>
-
-                    {/* Status banner */}
-
-
-                    {/* Names — AR + EN side by side */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div>
-                            <label style={lblStyle}>{t('flat_type_name_ar') || 'Flat Name (AR)'}{reqStar}</label>
-                            <input
-                                name="nameAr"
-                                type="text"
-                                value={formData.nameAr}
-                                placeholder="استوديو مع إطلالة"
-                                onChange={handleChange}
-                                style={{ ...inpStyle('nameAr'), direction: 'rtl', textAlign: 'right' }}
-                            />
-
-                            {errors.nameAr && <div style={errStyle}>{errors.nameAr}</div>}
-                        </div>
-                        <div>
-                            <label style={lblStyle}>{t('flat_type_name_en') || 'Flat Name (EN)'}{reqStar}</label>
-                            <input
-                                name="nameEn"
-                                type="text"
-                                value={formData.nameEn}
-                                placeholder="Studio with view"
-                                onChange={handleChange}
-                                style={{ ...inpStyle('nameEn'), direction: 'ltr' }}
-                            />
-                            {errors.nameEn && <div style={errStyle}>{errors.nameEn}</div>}
-                        </div>
+                {/* ===== STEP PROGRESS ===== */}
+                <div style={{ padding: '16px 20px 0', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#6b7280', marginBottom: '8px', flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+                        <span>{(t('step_of') || 'Step {current} of {total}').replace('{current}', stepIndex + 1).replace('{total}', totalSteps)}</span>
+                        <span style={{ fontWeight: 600, color: '#185FA5' }}>{current.title}</span>
                     </div>
-
-                    {/* Description */}
-                    <div>
-                        <label style={lblStyle}>{t('additional_details')}</label>
-                        <textarea
-                            name="description"
-                            value={formData.description}
-                            placeholder={t('description_placeholder')}
-                            onChange={handleChange}
-                            style={{ ...inpStyle('description'), height: '60px', resize: 'none', fontFamily: 'inherit' }}
-                        />
-                    </div>
-
-                    {/* Count + Unit type */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', alignItems: 'flex-start' }}>
-
-                        {/* Unit Type Selection */}
-                        <div>
-                            <label style={lblStyle}>{t('select_unit_type')}{reqStar}</label>
-                            <select
-                                name="unit_breakdown_id"
-                                value={formData.unit_breakdown_id}
-                                onChange={handleChange}
-                                style={inpStyle('unit_breakdown_id')}
-                            >
-                                <option value="">-- {t('select_unit_type')} --</option>
-                                {UNIT_TYPES.map((type) => (
-                                    <option key={type.id} value={type.id}>
-                                        {t(type.en) || type.en}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors.unit_breakdown_id && <div style={errStyle}>{errors.unit_breakdown_id}</div>}
-                        </div>
-
-                        {/* Total Count */}
-                        <div>
-                            <label style={lblStyle}>{t('total')}{reqStar}</label>
-                            <input
-                                name="count"
-                                type="number"
-                                value={formData.count}
-                                placeholder="6"
-                                onChange={handleChange}
-                                style={inpStyle('count')}
-                            />
-                            {errors.count && <div style={errStyle}>{errors.count}</div>}
-                        </div>
-
-                    </div>
-
-                    {/* Capacity / beds / toilets */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
-                        <div>
-                            <label style={lblStyle}>{t('capacity')}{reqStar}</label>
-                            <input name="visitors_count" type="text" value={formData.visitors_count} placeholder="4 Adults" onChange={handleChange} style={inpStyle('visitors_count')} />
-                            {errors.visitors_count && <div style={errStyle}>{errors.visitors_count}</div>}
-
-                        </div>
-                        <div>
-                            <label style={lblStyle}>{t('beds_number')}{reqStar}</label>
-                            <input name="beds_number" type="number" value={formData.beds_number} placeholder="2" onChange={handleChange} style={inpStyle('beds_number')} />
-                            {errors.beds_number && <div style={errStyle}>{errors.beds_number}</div>}
-
-                        </div>
-                        <div>
-                            <label style={lblStyle}>{t('toilets_number')}{reqStar}</label>
-                            <input name="tolits_number" type="number" value={formData.tolits_number} placeholder="1" onChange={handleChange} style={inpStyle('tolits_number')} />
-                            {errors.tolits_number && <div style={errStyle}>{errors.tolits_number}</div>}
-
-                        </div>
-                    </div>
-
-                    {/* Electronics */}
-                    <div>
-                        <label style={lblStyle}>{t('apartment_electronics') || 'In-Unit Electronics'}{reqStar}</label>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
-                            {electronicsOptions.map((item) => {
-                                const isSelected = selectedElectronics.includes(item.id);
-                                return (
-                                    <div key={item.id} onClick={() => toggleElectronic(item.id)} style={{ padding: '6px 12px', borderRadius: '20px', border: isSelected ? '1px solid #185FA5' : '1px solid #e5e7eb', background: isSelected ? '#eff6ff' : '#f9fafb', color: isSelected ? '#185FA5' : '#4b5563', fontSize: '12px', fontWeight: isSelected ? '600' : '400', cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s ease' }}>
-                                        {item.label}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        {errors.electronic_devices && <div style={errStyle}>{errors.electronic_devices}</div>}
-
-                    </div>
-
-                    {/* Prices */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div>
-                            <label style={lblStyle}>{t('base_rate')}{reqStar}</label>
-                            <div style={{ position: 'relative' }}>
-                                <input name="price_per_night" type="number" step="0.001" value={formData.price_per_night} placeholder="40.000" onChange={handleChange} style={{ ...inpStyle('price_per_night'), paddingInlineEnd: '32px' }} />
-                                <RialSymbol style={currencyIconStyle} />
-                            </div>
-                            {errors.price_per_night && <div style={errStyle}>{errors.price_per_night}</div>}
-                        </div>
-                        <div>
-                            <label style={lblStyle}>{t('weekend_rate')}{reqStar}</label>
-                            <div style={{ position: 'relative' }}>
-                                <input name="weekend_price_per_night" type="number" step="0.001" value={formData.weekend_price_per_night} placeholder="55.000" onChange={handleChange} style={{ ...inpStyle('weekend_price_per_night'), paddingInlineEnd: '32px' }} />
-                                <RialSymbol style={currencyIconStyle} />
-                            </div>
-                            {errors.weekend_price_per_night && <div style={errStyle}>{errors.weekend_price_per_night}</div>}
-                        </div>
-                    </div>
-
-                    {/* Insurance */}
-                    <div>
-                        <label style={lblStyle}>{t('insurance_amount')}</label>
-                        <div style={{ position: 'relative' }}>
-                            <input name="insurance_amount" type="number" step="0.001" value={formData.insurance_amount} placeholder="20.000" onChange={handleChange} style={{ ...inpStyle('insurance_amount'), paddingInlineEnd: '32px' }} />
-                            <RialSymbol style={currencyIconStyle} />
-                        </div>
-                    </div>
-
-                    {/* Media */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div>
-                            <label style={lblStyle}>{t('cover_image') }{reqStar}</label>
-
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                        {steps.map((s, idx) => (
                             <div
-                                onClick={() => coverInputRef.current.click()}
+                                key={s.key}
+                                onClick={() => goToStep(idx)}
+                                title={s.title}
                                 style={{
-                                    border: '1.5px dashed #cbd5e1',
-                                    borderRadius: '10px',
-                                    width: '120px',
-                                    height: '120px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    background: coverPreview
-                                        ? `center/cover url(${coverPreview})`
-                                        : '#f8fafc',
-                                    transition: 'all 0.2s',
-                                    marginTop: '4px',
-                                    overflow: 'hidden'
+                                    flex: 1,
+                                    height: '6px',
+                                    borderRadius: '4px',
+                                    cursor: idx <= maxReached ? 'pointer' : 'default',
+                                    background: idx <= stepIndex ? '#185FA5' : '#e5e7eb',
+                                    opacity: idx < stepIndex ? 0.55 : 1,
+                                    transition: 'background 0.2s',
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.borderColor = '#185FA5'}
-                                onMouseLeave={e => e.currentTarget.style.borderColor = '#cbd5e1'}
-                            >
-                                {!coverPreview && (
-                                    <span
-                                        style={{
-                                            fontSize: '12px',
-                                            color: '#64748b',
-                                            textAlign: 'center',
-                                            padding: '8px'
-                                        }}
-                                    >
-                {t('click_upload')}
-            </span>
-                                )}
-                            </div>
-
-                            <input
-                                ref={coverInputRef}
-                                type="file"
-                                accept="image/*"
-                                style={{ display: 'none' }}
-                                onChange={handleCoverChange}
                             />
-                        </div>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '10px' }}>
+                        {steps.map((s, idx) => (
+                            <button
+                                type="button"
+                                key={s.key}
+                                onClick={() => goToStep(idx)}
+                                disabled={idx > maxReached}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', padding: 0,
+                                    cursor: idx <= maxReached ? 'pointer' : 'default',
+                                    fontSize: '11px', fontWeight: idx === stepIndex ? 700 : 500,
+                                    color: idx === stepIndex ? '#185FA5' : idx < stepIndex ? '#16a34a' : '#9ca3af',
+                                }}
+                            >
+                                <span style={{
+                                    width: '15px', height: '15px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '9.5px', fontWeight: 700,
+                                    background: idx < stepIndex ? '#dcfce7' : idx === stepIndex ? '#e6f1fb' : '#f3f4f6',
+                                    color: idx < stepIndex ? '#16a34a' : idx === stepIndex ? '#185FA5' : '#9ca3af',
+                                }}>
+                                    {idx < stepIndex ? <IconCheck size={10} /> : idx + 1}
+                                </span>
+                                {s.title}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
-                        <div>
-                            <label style={lblStyle}>{t('media')}{reqStar}</label>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))', gap: '8px', marginTop: '4px' }}>
-                                {galFiles.map(({ preview }, index) => (
-                                    <div key={index} style={{ width: '100%', aspectRatio: '1', borderRadius: '8px', background: `center/cover url(${preview})`, position: 'relative', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
-                                        <button type="button" onClick={() => removeGalleryImage(index)} style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '4px', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', padding: 0 }}>
-                                            <IconTrash size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {galFiles.length < 6 && (
-                                    <div onClick={() => galleryInputRef.current.click()} style={{ width: '100%', aspectRatio: '1', borderRadius: '8px', border: '1.5px dashed #cbd5e1', background: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                                         onMouseEnter={e => { e.currentTarget.style.borderColor = '#185FA5'; e.currentTarget.style.background = '#f0f6ff'; }}
-                                         onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc'; }}>
-                                        <IconPlus size={16} color="#64748b" />
-                                        <span style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>{galFiles.length}/6</span>
-                                    </div>
-                                )}
-                            </div>
-                            <input ref={galleryInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleGalleryChange} />
-                        </div>
+                {/* Form */}
+                <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1, boxSizing: 'border-box' }}>
+
+                    {/* Guidance banner for the current step */}
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: '#e6f1fb', border: '1px solid #c7ddf5', borderRadius: '10px', padding: '12px 14px', fontSize: '12.5px', color: '#0c447c' }}>
+                        <IconInfoCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
+                        <span>{current.help}</span>
                     </div>
 
-                    {/* Actions */}
+                    {/* ===== BASICS ===== */}
+                    {current.key === 'basics' && (
+                        <>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div>
+                                    <label style={lblStyle}>{t('flat_type_name_ar') || 'Flat Name (AR)'}{reqStar}</label>
+                                    <input
+                                        name="nameAr"
+                                        type="text"
+                                        value={formData.nameAr}
+                                        placeholder="استوديو مع إطلالة"
+                                        onChange={handleChange}
+                                        style={{ ...inpStyle('nameAr'), direction: 'rtl', textAlign: 'right' }}
+                                    />
+                                    {errors.nameAr && <div style={errStyle}>{errors.nameAr}</div>}
+                                </div>
+                                <div>
+                                    <label style={lblStyle}>{t('flat_type_name_en') || 'Flat Name (EN)'}{reqStar}</label>
+                                    <input
+                                        name="nameEn"
+                                        type="text"
+                                        value={formData.nameEn}
+                                        placeholder="Studio with view"
+                                        onChange={handleChange}
+                                        style={{ ...inpStyle('nameEn'), direction: 'ltr' }}
+                                    />
+                                    {errors.nameEn && <div style={errStyle}>{errors.nameEn}</div>}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={lblStyle}>{t('additional_details')}</label>
+                                <textarea
+                                    name="description"
+                                    value={formData.description}
+                                    placeholder={t('description_placeholder')}
+                                    onChange={handleChange}
+                                    style={{ ...inpStyle('description'), height: '60px', resize: 'none', fontFamily: 'inherit' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', alignItems: 'flex-start' }}>
+                                <div>
+                                    <label style={lblStyle}>{t('select_unit_type')}{reqStar}</label>
+                                    <select
+                                        name="unit_breakdown_id"
+                                        value={formData.unit_breakdown_id}
+                                        onChange={handleChange}
+                                        style={inpStyle('unit_breakdown_id')}
+                                    >
+                                        <option value="">-- {t('select_unit_type')} --</option>
+                                        {UNIT_TYPES.map((type) => (
+                                            <option key={type.id} value={type.id}>
+                                                {lang === 'ar' ? type.ar : type.en}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {errors.unit_breakdown_id && <div style={errStyle}>{errors.unit_breakdown_id}</div>}
+                                </div>
+                                <div>
+                                    <label style={lblStyle}>{t('total')}{reqStar}</label>
+                                    <input
+                                        name="count"
+                                        type="number"
+                                        value={formData.count}
+                                        placeholder="6"
+                                        onChange={handleChange}
+                                        style={inpStyle('count')}
+                                    />
+                                    {errors.count && <div style={errStyle}>{errors.count}</div>}
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* ===== DETAILS ===== */}
+                    {current.key === 'details' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
+                            <div>
+                                <label style={lblStyle}>{t('capacity')}{reqStar}</label>
+                                <input name="visitors_count" type="text" value={formData.visitors_count} placeholder="4 Adults" onChange={handleChange} style={inpStyle('visitors_count')} />
+                                {errors.visitors_count && <div style={errStyle}>{errors.visitors_count}</div>}
+                            </div>
+                            <div>
+                                <label style={lblStyle}>{t('beds_number')}{reqStar}</label>
+                                <input name="beds_number" type="number" value={formData.beds_number} placeholder="2" onChange={handleChange} style={inpStyle('beds_number')} />
+                                {errors.beds_number && <div style={errStyle}>{errors.beds_number}</div>}
+                            </div>
+                            <div>
+                                <label style={lblStyle}>{t('toilets_number')}{reqStar}</label>
+                                <input name="tolits_number" type="number" value={formData.tolits_number} placeholder="1" onChange={handleChange} style={inpStyle('tolits_number')} />
+                                {errors.tolits_number && <div style={errStyle}>{errors.tolits_number}</div>}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== ELECTRONICS ===== */}
+                    {current.key === 'electronics' && (
+                        <div>
+                            <label style={lblStyle}>{t('apartment_electronics') || 'In-Unit Electronics'}{reqStar}</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                                {electronicsOptions.map((item) => {
+                                    const isSelected = selectedElectronics.includes(item.id);
+                                    return (
+                                        <div key={item.id} onClick={() => toggleElectronic(item.id)} style={{ padding: '6px 12px', borderRadius: '20px', border: isSelected ? '1px solid #185FA5' : '1px solid #e5e7eb', background: isSelected ? '#eff6ff' : '#f9fafb', color: isSelected ? '#185FA5' : '#4b5563', fontSize: '12px', fontWeight: isSelected ? '600' : '400', cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s ease' }}>
+                                            {item.label}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {errors.electronic_devices && <div style={errStyle}>{errors.electronic_devices}</div>}
+                        </div>
+                    )}
+
+                    {/* ===== PRICING ===== */}
+                    {current.key === 'pricing' && (
+                        <>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div>
+                                    <label style={lblStyle}>{t('base_rate')}{reqStar}</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input name="price_per_night" type="number" step="0.001" value={formData.price_per_night} placeholder="40.000" onChange={handleChange} style={{ ...inpStyle('price_per_night'), paddingInlineEnd: '32px' }} />
+                                        <RialSymbol style={currencyIconStyle} />
+                                    </div>
+                                    {errors.price_per_night && <div style={errStyle}>{errors.price_per_night}</div>}
+                                </div>
+                                <div>
+                                    <label style={lblStyle}>{t('weekend_rate')}{reqStar}</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input name="weekend_price_per_night" type="number" step="0.001" value={formData.weekend_price_per_night} placeholder="55.000" onChange={handleChange} style={{ ...inpStyle('weekend_price_per_night'), paddingInlineEnd: '32px' }} />
+                                        <RialSymbol style={currencyIconStyle} />
+                                    </div>
+                                    {errors.weekend_price_per_night && <div style={errStyle}>{errors.weekend_price_per_night}</div>}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={lblStyle}>{t('insurance_amount')}</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input name="insurance_amount" type="number" step="0.001" value={formData.insurance_amount} placeholder="20.000" onChange={handleChange} style={{ ...inpStyle('insurance_amount'), paddingInlineEnd: '32px' }} />
+                                    <RialSymbol style={currencyIconStyle} />
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* ===== MEDIA ===== */}
+                    {current.key === 'media' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div>
+                                <label style={lblStyle}>{t('cover_image')}{reqStar}</label>
+                                <div
+                                    onClick={() => coverInputRef.current.click()}
+                                    style={{
+                                        border: coverPreview ? '1px solid #e5e7eb' : '1.5px dashed #cbd5e1',
+                                        borderRadius: '10px',
+                                        width: '100%',
+                                        maxWidth: '280px',
+                                        height: '170px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        background: '#f8fafc',
+                                        transition: 'all 0.2s',
+                                        marginTop: '4px',
+                                        overflow: 'hidden',
+                                        position: 'relative',
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.borderColor = '#185FA5'}
+                                    onMouseLeave={e => e.currentTarget.style.borderColor = coverPreview ? '#e5e7eb' : '#cbd5e1'}
+                                >
+                                    {coverPreview ? (
+                                        <>
+                                            <img src={coverPreview} alt={t('cover_image') || 'Cover'} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                            <span style={{ position: 'absolute', bottom: '6px', insetInlineEnd: '6px', background: 'rgba(17,24,39,0.7)', color: '#fff', fontSize: '10px', padding: '3px 8px', borderRadius: '6px' }}>
+                                                {isRTL ? 'تغيير الصورة' : 'Change photo'}
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <span style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', padding: '8px' }}>
+                                            {t('click_upload')}
+                                        </span>
+                                    )}
+                                </div>
+                                <input
+                                    ref={coverInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    onChange={handleCoverChange}
+                                />
+                                {errors.cover && <div style={errStyle}>{errors.cover}</div>}
+                            </div>
+
+                            <div>
+                                <label style={lblStyle}>{t('media')}{reqStar}</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))', gap: '8px', marginTop: '4px' }}>
+                                    {galFiles.map(({ preview }, index) => (
+                                        <div key={index} style={{ width: '100%', aspectRatio: '1', borderRadius: '8px', background: `center/cover url(${preview})`, position: 'relative', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                                            <button type="button" onClick={() => removeGalleryImage(index)} style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '4px', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', padding: 0 }}>
+                                                <IconTrash size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {galFiles.length < 6 && (
+                                        <div onClick={() => galleryInputRef.current.click()} style={{ width: '100%', aspectRatio: '1', borderRadius: '8px', border: '1.5px dashed #cbd5e1', background: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                             onMouseEnter={e => { e.currentTarget.style.borderColor = '#185FA5'; e.currentTarget.style.background = '#f0f6ff'; }}
+                                             onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc'; }}>
+                                            <IconPlus size={16} color="#64748b" />
+                                            <span style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>{galFiles.length}/6</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <input ref={galleryInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleGalleryChange} />
+                                {errors.gallery && <div style={errStyle}>{errors.gallery}</div>}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== REVIEW ===== */}
+                    {current.key === 'review' && (
+                        <ReviewStep
+                            t={t}
+                            lang={lang}
+                            data={{
+                                nameAr: formData.nameAr,
+                                nameEn: formData.nameEn,
+                                unitType: UNIT_TYPES.find(u => String(u.id) === String(formData.unit_breakdown_id)),
+                                count: formData.count,
+                                visitors_count: formData.visitors_count,
+                                beds_number: formData.beds_number,
+                                tolits_number: formData.tolits_number,
+                                electronicsCount: selectedElectronics.length,
+                                price_per_night: formData.price_per_night,
+                                weekend_price_per_night: formData.weekend_price_per_night,
+                                mediaCount: (coverFile ? 1 : 0) + galFiles.length,
+                            }}
+                            onEditStep={goToStep}
+                        />
+                    )}
+
+                    {stepError && (
+                        <div style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
+                            {stepError}
+                        </div>
+                    )}
+                </div>
+
+                {/* Actions */}
+                <div style={{ padding: '14px 20px', borderTop: '1px solid #f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '16px', flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                     {statusMessage.text && (
-                        <div style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: statusMessage.isError ? '#fef2f2' : '#f0fdf4', color: statusMessage.isError ? '#dc2626' : '#16a34a', border: `1px solid ${statusMessage.isError ? '#fecaca' : '#bbf7d0'}` }}>
+                        <div style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', fontSize: '13px', background: statusMessage.isError ? '#fef2f2' : '#f0fdf4', color: statusMessage.isError ? '#dc2626' : '#16a34a', border: `1px solid ${statusMessage.isError ? '#fecaca' : '#bbf7d0'}` }}>
                             {statusMessage.text}
                         </div>
                     )}
-                    <div style={{ marginTop: '12px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <div style={{ flexShrink: 0, display: 'flex', gap: '10px', marginInlineStart: 'auto', flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                         <button type="button" onClick={onClose} disabled={isLoading} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#fff', color: '#374151', fontSize: '13px', cursor: 'pointer' }}>
                             {t('cancel')}
                         </button>
-                        <button type="submit" disabled={isLoading} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: isLoading ? '#93c0e4' : '#185FA5', color: 'white', border: 'none', padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: isLoading ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}>
-                            <IconDeviceFloppy size={16} />
-                            {isLoading ? t('saving') || 'Saving…' : t('add_flat_type')}
-                        </button>
+                        {stepIndex > 0 && (
+                            <button type="button" onClick={goBack} disabled={isLoading} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer' }}>
+                                {arrowBack} {t('back') || 'Back'}
+                            </button>
+                        )}
+                        {current.key !== 'review' ? (
+                            <button type="button" onClick={goNext} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#185FA5', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 18px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                                {t('next') || 'Next'} {arrowNext}
+                            </button>
+                        ) : (
+                            <button type="button" onClick={handleSubmit} disabled={isLoading} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: isLoading ? '#93c0e4' : '#185FA5', color: 'white', border: 'none', padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: isLoading ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}>
+                                {isLoading ? (t('saving') || 'Saving…') : t('add_flat_type')}
+                            </button>
+                        )}
                     </div>
+                </div>
 
-                </form>
+            </div>
+        </div>
+    );
+}
+
+/** ReviewStep — a compact read-only summary of the flat type before submitting. */
+function ReviewStep({ t, lang, data, onEditStep }) {
+    const rows = [
+        { label: t('flat_type_name_en') || 'Name', value: data.nameEn || data.nameAr, step: 0 },
+        { label: t('select_unit_type') || 'Unit Type', value: data.unitType ? (lang === 'ar' ? data.unitType.ar : data.unitType.en) : '', step: 0 },
+        { label: t('total') || 'Total', value: data.count, step: 0 },
+        { label: `${t('capacity') || 'Capacity'}`, value: data.visitors_count, step: 1 },
+        { label: `${t('beds_number') || 'Beds'} / ${t('toilets_number') || 'Bathrooms'}`, value: `${data.beds_number || 0} / ${data.tolits_number || 0}`, step: 1 },
+        { label: t('apartment_electronics') || 'Electronics', value: `${data.electronicsCount} ${t('selected') || 'selected'}`, step: 2 },
+        { label: t('base_rate') || 'Base Rate', value: data.price_per_night ? `${data.price_per_night} ${t('OMR') || 'OMR'}` : '', step: 3 },
+        { label: t('weekend_rate') || 'Weekend Rate', value: data.weekend_price_per_night ? `${data.weekend_price_per_night} ${t('OMR') || 'OMR'}` : '', step: 3 },
+        { label: t('media') || 'Photos', value: `${data.mediaCount} ${t('photos') || 'photos'}`, step: 4 },
+    ];
+
+    return (
+        <div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#111827', marginBottom: '10px' }}>{t('review_summary') || 'Summary'}</div>
+            <div style={{ borderRadius: '10px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                {rows.map((row, idx) => (
+                    !row.value ? null : (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: idx === rows.length - 1 ? 'none' : '1px solid #f1f5f9', fontSize: '13px', background: idx % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                            <span style={{ color: '#6b7280' }}>{row.label}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 600, color: '#111827' }}>
+                                {row.value}
+                                <button type="button" onClick={() => onEditStep(row.step)} style={{ background: 'none', border: 'none', color: '#185FA5', fontSize: '11.5px', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
+                                    {t('edit_step') || 'Edit'}
+                                </button>
+                            </span>
+                        </div>
+                    )
+                ))}
             </div>
         </div>
     );

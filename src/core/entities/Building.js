@@ -34,6 +34,16 @@ export class BuildingEntity {
                     isActive = true,
                     isDeleted = false,
                     stopBook = false,
+                    // "Today's Offer" — owner-controlled discount for a day with
+                    // no booking (TODAY-OFFER-API-SPEC.md). Set once per building
+                    // (not per flat) and applies to whichever flat the guest ends
+                    // up booking. todayOfferActive is computed server-side and
+                    // never sent back on update — read-only here, kept only so
+                    // the entity can carry it through for display.
+                    todayOfferEnabled = false,
+                    todayOfferPercent = 0,
+                    todayOfferTriggerHour = 12,
+                    todayOfferActive = false,
                     bulidstatus = 0,
                     coverimg = '',
                     value1 = '',
@@ -77,6 +87,10 @@ export class BuildingEntity {
         this.isActive               = Boolean(isActive);
         this.isDeleted              = Boolean(isDeleted);
         this.stopBook               = Boolean(stopBook);
+        this.todayOfferEnabled      = Boolean(todayOfferEnabled);
+        this.todayOfferPercent      = Number(todayOfferPercent) || 0;
+        this.todayOfferTriggerHour  = Number(todayOfferTriggerHour ?? 12);
+        this.todayOfferActive       = Boolean(todayOfferActive);
         this.bulidstatus            = Number(bulidstatus) || 0;
         this.coverimg               = coverimg ?? '';
         this.value1                 = value1 ?? '';
@@ -142,6 +156,12 @@ export class BuildingEntity {
             isActive:                this.isActive,
             isDeleted:               this.isDeleted,
             stopBook:                this.stopBook,
+            // "Today's Offer" — see TODAY-OFFER-API-SPEC.md. Only the enabled
+            // flag, percent and trigger hour are ever sent up; todayOfferActive
+            // is server-computed and intentionally left off this payload.
+            todayOfferEnabled:       this.todayOfferEnabled,
+            todayOfferPercent:       this.todayOfferPercent,
+            todayOfferTriggerHour:   this.todayOfferTriggerHour,
             bulidstatus:             this.bulidstatus,
             buldingImages:           this.buldingImages,
             buildingFlatType:        this.buildingFlatType,

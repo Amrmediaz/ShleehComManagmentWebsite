@@ -3,6 +3,7 @@ import DetailRow from './DetailRow.jsx';
 import SectionCard from './SectionCard.jsx';
 import RialSymbol from '../OmaniRial.jsx';
 import { getGoogleMapsUrl } from '../../../core/utils/helper/Helpers.js';
+import { localizeGovernorate, localizeWilayat } from '../../../core/utils/Constants/building_constants.js';
 import '../../styles/Buildingdetails.css';
 
 /**
@@ -31,8 +32,8 @@ const BuildingDetailsTab = ({ building, lang, t }) => {
 
             {/* Location Section */}
             <SectionCard title={t('location') || 'Location'} icon="fa-solid fa-map-pin">
-                <DetailRow icon="fa-solid fa-map" label={t('governorate') || 'Governorate'} value={building.governorate} />
-                <DetailRow icon="fa-solid fa-location-dot" label={t('wilayat') || 'Wilayat'} value={building.wilayat} />
+                <DetailRow icon="fa-solid fa-map" label={t('governorate') || 'Governorate'} value={localizeGovernorate(building.governorate, lang)} />
+                <DetailRow icon="fa-solid fa-location-dot" label={t('wilayat') || 'Wilayat'} value={localizeWilayat(building.wilayat, lang)} />
                 <DetailRow icon="fa-solid fa-road" label={t('address') || 'Address'} value={raw.location} />
                 <DetailRow icon="fa-solid fa-near-me" label={t('near_to') || 'Near To'} value={raw.nearTo} />
 

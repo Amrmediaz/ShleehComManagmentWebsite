@@ -1,5 +1,6 @@
 import React from 'react';
 import FlatCard from './FlatCard';
+import { CardSkeletonGrid } from '../Skeleton.jsx';
 import '../../styles/Buildingdetails.css';
 
 /**
@@ -31,18 +32,18 @@ const BuildingFlatsTab = ({
             </div>
 
             {/* Loading State */}
-            {loading && (
-                <div className="empty-state">
-                    <i className="ti ti-loader-2 empty-state__icon" style={{ animation: 'spin 1s linear infinite' }} />
-                    <p className="empty-state__text">{t('loading') || 'Loading flats…'}</p>
-                </div>
-            )}
+            {loading && <CardSkeletonGrid count={6} />}
 
             {/* Empty State */}
             {!loading && flats.length === 0 && (
                 <div className="empty-state">
                     <i className="ti ti-building empty-state__icon" />
-                    <p className="empty-state__text">{t('no_flats') || 'No flats found'}</p>
+                    <p className="empty-state__text">{t('no_flats_yet') || t('no_flats') || 'No flats added yet'}</p>
+                    <p className="empty-state__subtext">{t('no_flats_hint') || 'Add the flat types you rent out in this building to start taking bookings.'}</p>
+                    <button className="btn btn-primary" onClick={onAddFlat} style={{ marginTop: '12px' }}>
+                        <i className="ti ti-plus" />
+                        {t('add_flat') || 'Add Flat'}
+                    </button>
                 </div>
             )}
 

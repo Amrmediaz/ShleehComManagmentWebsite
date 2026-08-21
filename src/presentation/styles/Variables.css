@@ -1,10 +1,18 @@
 /* Color Palette */
 :root {
-    /* Primary */
-    --color-primary: #6366f1;
-    --color-primary-dark: #4f46e5;
-    --color-primary-light: #eef2ff;
-    --color-primary-lighter: #c7d2fe;
+    /* Primary — matches the brand blue (#185FA5) used across the rest of the
+       app (buttons, headers, active states) instead of the previous
+       mismatched indigo, for a single cohesive theme. */
+    --color-primary: #185FA5;
+    --color-primary-dark: #124a83;
+    --color-primary-light: #e6f1fb;
+    --color-primary-lighter: #bcd9f0;
+
+    /* Chalets accent — a warm counterpart to the buildings' blue, used to
+       visually distinguish the Chalets section (cards, badges, nav). */
+    --color-chalet-accent: #c2680f;
+    --color-chalet-accent-dark: #9c5209;
+    --color-chalet-accent-light: #fdf0e2;
 
     /* Text */
     --color-text-primary: #1e293b;
@@ -58,9 +66,9 @@
     --font-weight-semibold: 600;
 
     /* Shadows */
-    --shadow-sm: 0 4px 16px 0 rgba(99, 102, 241, 0.07);
+    --shadow-sm: 0 4px 16px 0 rgba(24, 95, 165, 0.08);
     --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.15);
-    --shadow-hover: 0 4px 16px 0 rgba(99, 102, 241, 0.07);
+    --shadow-hover: 0 4px 16px 0 rgba(24, 95, 165, 0.08);
 
     /* Transitions */
     --transition-fast: 0.12s;

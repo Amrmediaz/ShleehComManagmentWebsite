@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../context/LanguageContext';
 import EditBuildingModal from './EditBuildingModal.jsx';
+import AddBuildingModal from './AddBuildingModal.jsx';
 import EditRoomModal from '../components/FlatAddingUpdating/EditRoomModal.jsx';
 import AddRoomModal from '../components/FlatAddingUpdating/AddRoomModal.jsx';
 import SpecialPricesModal from '../components/FlatAddingUpdating/SpecialPricesModal.jsx';
 import BookingsCalendarModal from '../components/FlatAddingUpdating/BookingsCalendarModal.jsx';
 import { GetOwnerBuildingsFlatUseCase } from '../../core/useCases/GetBuildingsFlatUseCase.js';
 import { GetOwnerFlatUseCase } from '../../core/useCases/GetFlatByIdUseCase.js';
+import { GetOwnerBuildingsUseCase } from '../../core/useCases/GetOwnerBuildingsUseCase.js';
 
 // Sub-components
 import BuildingHeader from '../components/BuildingDetails/BuildingHeader';
@@ -14,7 +16,9 @@ import TabNavigation from '../components/BuildingDetails/TabNavigation';
 import BuildingDetailsTab from '../components/BuildingDetails/Buildingdetailstab.jsx';
 import BuildingFlatsTab from '../components/BuildingDetails/BuildingFlatsTab';
 import BuildingImagesTab from '../components/BuildingDetails/BuildingImagesTab';
+import BuildingOffersTab from '../components/BuildingDetails/BuildingOffersTab.jsx';
 import LoadingOverlay from '../components/BuildingDetails/LoadingOverlay';
+import { Skeleton, CardSkeletonGrid } from '../components/Skeleton.jsx';
 
 // Utilities
 import {
@@ -54,7 +58,26 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
     const [isBookingsModalOpen, setIsBookingsModalOpen] = useState(false);
     const [selectedFlatForBookings, setSelectedFlatForBookings] = useState(null);
 
+    // "No buildings at all yet" detection — used to tell a genuinely empty
+    // account apart from the brief moment while Header is still fetching the
+    // owner's building list, so a brand-new owner sees a real empty state
+    // with a way to add their first building instead of an endless skeleton.
+    const [buildingsCheck, setBuildingsCheck] = useState({ checked: false, empty: false });
+    const [isFirstBuildingOpen, setIsFirstBuildingOpen] = useState(false);
+
     // ===== EFFECTS =====
+    useEffect(() => {
+        if (building) return;
+        let cancelled = false;
+        GetOwnerBuildingsUseCase.execute()
+            .then((list) => {
+                if (cancelled) return;
+                setBuildingsCheck({ checked: true, empty: !Array.isArray(list) || list.length === 0 });
+            })
+            .catch(() => { if (!cancelled) setBuildingsCheck({ checked: true, empty: false }); });
+        return () => { cancelled = true; };
+    }, [building]);
+
     useEffect(() => {
         if (building) {
             const enrichedBuilding = {
@@ -223,15 +246,45 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
     const tabs = [
         { key: 'details', label: t('details') || 'Details', icon: 'fa-solid fa-circle-info' },
         { key: 'flats', label: t('flats') || 'Flats', icon: 'fa-solid fa-building' },
+        { key: 'offers', label: t('today_offer_tab_label') || "Today's Offer", icon: 'fa-solid fa-bolt' },
         { key: 'images', label: t('images') || 'Images', icon: 'fa-solid fa-images' },
     ];
+
+    // ===== EMPTY STATE (genuinely zero buildings on the account) =====
+    if ((!building || !localBuilding) && buildingsCheck.checked && buildingsCheck.empty) {
+        return (
+            <div className="building-detail-container">
+                <div className="empty-state">
+                    <i className="ti ti-building empty-state__icon" />
+                    <p className="empty-state__text">{t('no_buildings_yet') || 'No buildings added yet'}</p>
+                    <p className="empty-state__subtext">{t('no_buildings_hint') || 'Add your first building to start managing flats and bookings.'}</p>
+                    <button className="btn btn-primary" onClick={() => setIsFirstBuildingOpen(true)} style={{ marginTop: '12px' }}>
+                        <i className="ti ti-plus" />
+                        {t('add_building') || 'Add Building'}
+                    </button>
+                </div>
+                {isFirstBuildingOpen && (
+                    <AddBuildingModal
+                        isOpen={isFirstBuildingOpen}
+                        onClose={() => setIsFirstBuildingOpen(false)}
+                        onSaved={() => window.location.reload()}
+                    />
+                )}
+            </div>
+        );
+    }
 
     // ===== LOADING STATE =====
     if (!building || !localBuilding) {
         return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', flexDirection: 'column', gap: '12px', color: '#64748b' }}>
-                <i className="fa-solid fa-building" style={{ fontSize: '32px', opacity: 0.3 }} />
-                <p style={{ margin: 0 }}>{t('loading_building_details')}</p>
+            <div className="building-detail-container">
+                <Skeleton height="300px" style={{ borderRadius: 'var(--radius-xl)', marginBottom: '24px' }} />
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
+                    <Skeleton width="110px" height="38px" style={{ borderRadius: '10px' }} />
+                    <Skeleton width="90px" height="38px" style={{ borderRadius: '10px' }} />
+                    <Skeleton width="100px" height="38px" style={{ borderRadius: '10px' }} />
+                </div>
+                <CardSkeletonGrid count={3} />
             </div>
         );
     }
@@ -252,6 +305,8 @@ export default function BuildingDetail({ building, onUpdateBuilding }) {
 
             {/* Tab Content */}
             {activeTab === 'details' && <BuildingDetailsTab building={localBuilding} lang={lang} t={t} />}
+
+            {activeTab === 'offers' && <BuildingOffersTab key={getBuildingId(localBuilding)} building={localBuilding} t={t} />}
 
             {activeTab === 'flats' && (
                 <BuildingFlatsTab

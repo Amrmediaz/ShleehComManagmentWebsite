@@ -4,8 +4,9 @@ import AddPropertyModal from '../../pages/AddBuildingModal.jsx';
 import LogoutModal from '../../components/Profile/LogoutModal.jsx';
 import ProfileModal from '../../components/Profile/ProfileModal.jsx';
 import { GetOwnerBuildingsUseCase } from '../../../core/useCases/GetOwnerBuildingsUseCase.js';
+import { Skeleton } from '../Skeleton.jsx';
 
-export default function Header({ selectedBuilding, onBuildingChange }) {
+export default function Header({ selectedBuilding, onBuildingChange, currentScreen }) {
     const { lang, toggleLanguage, t } = useTranslation();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLogoutOpen, setIsLogoutOpen] = useState(false);
@@ -21,9 +22,14 @@ export default function Header({ selectedBuilding, onBuildingChange }) {
             setLoadingBuildings(true);
             const list = await GetOwnerBuildingsUseCase.execute();
             setBuildings(list);
-            // Auto-select first building if nothing selected yet
-            if (list.length > 0 && !selectedBuilding) {
-                onBuildingChange(list[0].id, list[0]);
+            if (list.length > 0) {
+                // `selectedBuilding` here is just the ID — it may already be set
+                // (restored from sessionStorage after a refresh), in which case
+                // we still need to hydrate the full object from the fetched list
+                // rather than skipping selection entirely. Falls back to the
+                // first building if there's no persisted ID or it's no longer valid.
+                const match = selectedBuilding ? list.find((b) => b.id === selectedBuilding) : null;
+                onBuildingChange((match || list[0]).id, match || list[0]);
             }
         } catch (err) {
             console.error('[Header] Failed to fetch buildings:', err);
@@ -72,7 +78,7 @@ export default function Header({ selectedBuilding, onBuildingChange }) {
             boxSizing: 'border-box',
         }}>
 
-            {/* Left: Property selector */}
+            {/* Left: Property selector (hidden on the Chalets screen — chalets manage themselves) */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -81,32 +87,34 @@ export default function Header({ selectedBuilding, onBuildingChange }) {
                 flex: '1 1 auto',
                 minWidth: 0,
             }}>
-                <span className="selector-label">{t('active_property')}</span>
+                {currentScreen !== 'chalets' && (
+                    <>
+                        <span className="selector-label">{t('active_property')}</span>
 
-                {loadingBuildings ? (
-                    <span style={{ fontSize: '14px', color: '#64748b' }}>
-                        {t('loading') || 'Loading...'}
-                    </span>
-                ) : buildings.length > 0 ? (
-                    <select
-                        value={selectedBuilding || ''}
-                        onChange={handleSelectChange}
-                    >
-                        {buildings.map(b => (
-                            <option key={b.id} value={b.id}>
-                                {lang === 'ar' ? (b.nameAr || b.nameEn) : (b.nameEn || b.nameAr)}
-                            </option>
-                        ))}
-                    </select>
-                ) : (
-                    <span style={{ fontSize: '14px', color: '#94a3b8' }}>
-                        {t('no_buildings')}
-                    </span>
+                        {loadingBuildings ? (
+                            <Skeleton width="160px" height="20px" />
+                        ) : buildings.length > 0 ? (
+                            <select
+                                value={selectedBuilding || ''}
+                                onChange={handleSelectChange}
+                            >
+                                {buildings.map(b => (
+                                    <option key={b.id} value={b.id}>
+                                        {lang === 'ar' ? (b.nameAr || b.nameEn) : (b.nameEn || b.nameAr)}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            <span style={{ fontSize: '14px', color: '#94a3b8' }}>
+                                {t('no_buildings')}
+                            </span>
+                        )}
+
+                        <button className="btn btn-secondary" onClick={() => setIsModalOpen(true)}>
+                            <i className="fa-solid fa-circle-plus"></i> {t('add_building')}
+                        </button>
+                    </>
                 )}
-
-                <button className="btn btn-secondary" onClick={() => setIsModalOpen(true)}>
-                    <i className="fa-solid fa-circle-plus"></i> {t('add_building')}
-                </button>
             </div>
 
             {/* Right: Language + Profile */}

@@ -1,6 +1,7 @@
 import { BuildingRepository } from '../../data/repositories/BuildingRepository';
 import { BuildingEntity } from '../entities/Building.js';
 import { validateBuildingFields } from '../utils/validations/ValidationBuildingFields.js';
+import { invalidateCache } from '../utils/helper/simpleCache.js';
 
 export const AddBuildingUseCase = {
     /**
@@ -24,6 +25,7 @@ export const AddBuildingUseCase = {
 
         // 3. Send to data layer
         const result = await BuildingRepository.addBuilding(building.toApiPayload());
+        invalidateCache('buildings');
 
         return { validationError: null, result };
     },

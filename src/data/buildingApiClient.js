@@ -124,6 +124,35 @@ export const buildingApiClient = {
         return await _handleResponse(response, 'getOwnerBuildings');
     },
 
+    // ============ TODAY'S OFFER ENDPOINTS ============
+    // Dedicated owner-panel endpoints (see TODAY-OFFER-API-SPEC.md Part 5) —
+    // separate from the general building update/detail above, so saving the
+    // offer doesn't need the full ~30-field building payload rebuilt each
+    // time. Paths are backend's proposed names pending final confirmation.
+
+    /** Get a building's current Today's Offer settings (including live todayOfferActive). */
+    async getTodayOffer(buildingId) {
+        const API_URL = _getApiUrl();
+        // Confirmed via Swagger: shares the same query param name as the
+        // chalet endpoint (`BuldingId`), not HotelbuildingId.
+        const response = await fetch(API_URL + `/api/Owners/GetHotelBuildingTodayOffer?BuldingId=${buildingId}`, {
+            method: 'GET',
+            headers: _getHeaders(),
+        });
+        return await _handleResponse(response, 'getTodayOffer');
+    },
+
+    /** Update a building's Today's Offer settings. payload: { hotelbuildingId, todayOfferEnabled, todayOfferPercent, todayOfferTriggerHour } */
+    async putUpdateTodayOffer(payload) {
+        const API_URL = _getApiUrl();
+        const response = await fetch(API_URL + `/api/Owners/UpdateHotelBuildingTodayOffer`, {
+            method: 'POST',
+            headers: _getHeaders(),
+            body: JSON.stringify(payload),
+        });
+        return await _handleResponse(response, 'putUpdateTodayOffer');
+    },
+
     // ============ FLAT ENDPOINTS ============
 
     /**

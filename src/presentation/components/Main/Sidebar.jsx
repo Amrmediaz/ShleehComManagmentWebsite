@@ -8,6 +8,7 @@ export default function Sidebar({ currentScreen, setScreen, mobileOpen, closeSid
     const menuItems = [
         { id: 'dashboard', label: t('nav_dash'), icon: 'fa-chart-pie' },
         { id: 'buildings', label: t('nav_buildings'), icon: 'fa-city' },
+        { id: 'chalets', label: t('nav_chalets'), icon: 'fa-house-chimney' },
         { id: 'calendar', label: t('nav_calendar'), icon: 'fa-calendar-days' },
         { id: 'new-booking', label: t('nav_new_booking'), icon: 'fa-calendar-plus' },
         { id: 'bookings-list', label: t('nav_booking_list'), icon: 'fa-list-check' },
@@ -24,17 +25,14 @@ export default function Sidebar({ currentScreen, setScreen, mobileOpen, closeSid
                 {menuItems.map(item => (
                     <li
                         key={item.id}
+                        data-nav={item.id}
                         className={`nav-item ${currentScreen === item.id ? 'active' : ''}`}
                         onClick={() => {
-                            if (item.id === "new-booking" || item.id === "dashboard") {
+                            if (item.id === "new-booking") {
                                 alert(t('feature_is_under_developing'))
                                 return;
                             }
-                            // if(item.id === "buildings"){
                             setScreen(item.id);
-                        // } 
-                            // else {
-                            //     alert(t('feature_is_under_developing'));}
                             if (closeSidebar) closeSidebar(); // 🟢 Auto-hide sidebar after clicking a menu item on mobile
                         }}
                     >

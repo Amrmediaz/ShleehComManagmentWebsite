@@ -138,6 +138,31 @@ export const WILAYATS_BILINGUAL = {
     },
 };
 
+// ===== LOCATION NAME LOOKUP (raw English value → Arabic) =====
+// Buildings & chalets always store governorate/wilayat as the English name
+// (see the `value={govKey}` / `value={wilayat.en}` options in
+// LocationSection.jsx) regardless of which language the owner was using
+// when they picked it — so anywhere it's displayed needs to re-localize it
+// for the current UI language rather than showing the raw English string.
+const GOVERNORATE_AR_BY_EN = Object.fromEntries(
+    Object.values(WILAYATS_BILINGUAL).map((g) => [g.en, g.ar])
+);
+const WILAYAT_AR_BY_EN = Object.fromEntries(
+    Object.values(WILAYATS_BILINGUAL).flatMap((g) => g.wilayats.map((w) => [w.en, w.ar]))
+);
+
+/** Localizes a governorate name (stored in English) for the current language. */
+export function localizeGovernorate(enName, lang) {
+    if (!enName || lang !== 'ar') return enName;
+    return GOVERNORATE_AR_BY_EN[enName] || enName;
+}
+
+/** Localizes a wilayat/city name (stored in English) for the current language. */
+export function localizeWilayat(enName, lang) {
+    if (!enName || lang !== 'ar') return enName;
+    return WILAYAT_AR_BY_EN[enName] || enName;
+}
+
 // Keep the old format for backward compatibility if needed
 export const WILAYATS = {
     'Muscat': ['Muscat', 'Muttrah', 'Bausher', 'Al Amerat', 'Qurayyat', 'As Seeb'],
@@ -200,3 +225,24 @@ export const AMENITIES_UI = [
 export const SERVICE_TO_KEY = Object.fromEntries(
     Object.entries(AMENITY_SERVICE_MAP).map(([k, v]) => [v, k])
 );
+
+// Case-insensitive lookup table, since raw service strings coming back from
+// the API don't always match AMENITY_SERVICE_MAP's casing exactly.
+const SERVICE_TO_KEY_LOWER = Object.fromEntries(
+    Object.entries(SERVICE_TO_KEY).map(([display, key]) => [display.toLowerCase(), key])
+);
+
+/**
+ * Resolves a raw building service string (e.g. "CCTV", "Swimming Pool") to
+ * its icon/color + translation key, for rendering a proper amenity chip
+ * instead of a plain untranslated badge.
+ *
+ * @param {string} serviceDisplay - raw service string from the API
+ * @returns {{ key: string, Icon: any, bg: string, color: string } | null}
+ */
+export function getAmenityMeta(serviceDisplay) {
+    if (!serviceDisplay) return null;
+    const key = SERVICE_TO_KEY[serviceDisplay] || SERVICE_TO_KEY_LOWER[String(serviceDisplay).toLowerCase()];
+    if (!key) return null;
+    return AMENITIES_UI.find((a) => a.key === key) || null;
+}
